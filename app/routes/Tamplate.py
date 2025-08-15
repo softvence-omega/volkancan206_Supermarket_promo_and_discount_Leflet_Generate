@@ -6,7 +6,10 @@ import math
 import json
 import os
 import shutil
-from app.config import LOGO_UPLOAD_DIR, PRODUCT_IMAGE_UPLOAD_DIR
+import time
+import requests
+
+from app.config import LOGO_UPLOAD_DIR, PRODUCT_IMAGE_UPLOAD_DIR,OPENAI_API_KEY
 from app.services.tamplate_prompt_design import generate_campaign_templates
 
 router = APIRouter()
@@ -22,6 +25,32 @@ async def save_file(file: UploadFile, save_dir: str) -> str:
     return save_path
 
 # -----------------------------
+# Function to generate product/page images via OpenAI
+# -----------------------------
+def generate_leaflet_image(prompt: str, size: str = "1024x1024") -> Optional[str]:
+    url = "https://api.openai.com/v1/images/generations"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    system_prompt = "Create a high-quality sticker or leaflet design"
+    full_prompt = f"{system_prompt} {prompt}"
+    
+    data = {
+        "model": "dall-e-3",
+        "prompt": full_prompt,
+        "n": 1,
+        "size": size
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()['data'][0]['url']
+    else:
+        print(f"[ERROR] OpenAI Image Generation Failed: {response.status_code} - {response.text}")
+        return None
+
+# -----------------------------
 # Campaign creation endpoint
 # -----------------------------
 @router.post("/create-campaign")
@@ -31,54 +60,60 @@ async def create_campaign(
     campaign_start_date: date = Form(...),
     campaign_end_date: date = Form(...),
     supermarket_logo: UploadFile = File(...),
-
     products_data: Optional[str] = Form(None),
-    product_names: Optional[List[str]] = Form(None),
     product_images: Optional[List[UploadFile]] = File(None),
-
     products_per_page: int = Form(...),
     template_instruction: str = Form(...),
-
     target_languages: Optional[List[str]] = Form(None),
-    additional_language: Optional[str] = Form(None)
+    additional_language: Optional[str] = Form(None),
+    show_secondary_language: bool = Form(False),
+    show_discount: bool = Form(True),
+    show_old_price: bool = Form(True)
 ):
+    # -----------------------------
+    # Validate products
+    # -----------------------------
+    if not products_data:
+        raise HTTPException(status_code=400, detail="products_data JSON is required")
 
-    # Validate at least one product
-    if not products_data and not product_names and not product_images:
-        raise HTTPException(status_code=400, detail="At least one product must be provided.")
-
-    # Save logo
-    logo_path = await save_file(supermarket_logo, LOGO_UPLOAD_DIR)
+    # Save supermarket logo
+    await save_file(supermarket_logo, LOGO_UPLOAD_DIR)
 
     # Parse products JSON
-    products_list = []
-    if products_data:
-        try:
-            products_list = json.loads(products_data)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid products_data JSON")
+    try:
+        products_list = json.loads(products_data)
+        if not isinstance(products_list, list):
+            raise ValueError
+    except (json.JSONDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid products_data JSON. Must be a list.")
 
-    # Add individual products
-    if product_names or product_images:
-        max_len = max(len(product_names) if product_names else 0,
-                      len(product_images) if product_images else 0)
-        for i in range(max_len):
-            name = product_names[i] if product_names and i < len(product_names) else ""
-            images = []
-            if product_images and i < len(product_images):
-                img_file = product_images[i]
-                img_path = await save_file(img_file, PRODUCT_IMAGE_UPLOAD_DIR)
-                images.append(img_file.filename)
-            if not name and not images:
-                continue
-            products_list.append({
-                "name_primary": name,
-                "uploaded_images": images
-            })
+    # Map uploaded images to product names
+    if product_images:
+        for img in product_images:
+            name_base = os.path.splitext(img.filename)[0].lower()
+            matched = False
+            for prod in products_list:
+                if prod.get("name_primary", "").lower() == name_base:
+                    saved_path = await save_file(img, PRODUCT_IMAGE_UPLOAD_DIR)
+                    prod.setdefault("uploaded_images", []).append(os.path.basename(saved_path))
+                    matched = True
+                    break
+            if not matched:
+                await save_file(img, PRODUCT_IMAGE_UPLOAD_DIR)
 
-    # Languages
+    # Calculate discount if missing
+    for prod in products_list:
+        if "new_price" in prod and "old_price" in prod and not prod.get("discount"):
+            try:
+                old = float(prod["old_price"])
+                new = float(prod["new_price"])
+                prod["discount"] = f"{round((old - new) / old * 100)}%"
+            except Exception:
+                prod["discount"] = None
+
+    # Language handling
     DEFAULT_LANGUAGES = ["english", "turkish", "japanese", "bangla"]
-    languages = target_languages if target_languages else DEFAULT_LANGUAGES
+    languages = target_languages or DEFAULT_LANGUAGES
     if additional_language:
         additional_language = additional_language.strip().lower()
         if additional_language not in languages:
@@ -89,14 +124,12 @@ async def create_campaign(
     pages = []
     for i in range(total_pages):
         page_products = products_list[i*products_per_page : (i+1)*products_per_page]
-        page_id = f"page_{i+1}"
-
         pages.append({
             "page_number": i+1,
             "products": page_products
         })
 
-    # Call LLM service to generate JSON templates
+    # Generate LLM templates
     llm_pages = generate_campaign_templates(
         supermarket_name=supermarket_name,
         supermarket_address=supermarket_address,
@@ -107,6 +140,14 @@ async def create_campaign(
         template_instruction=template_instruction,
         languages=languages
     )
+
+    # -----------------------------
+    # Generate leaflet images per page
+    # -----------------------------
+    for page in llm_pages:
+        prompt_text = f"Supermarket campaign page with products: {[p['name_primary'] for p in page['products']]}, show prices, discount, layout as per template."
+        image_url = generate_leaflet_image(prompt_text)
+        page['leaflet_image_url'] = image_url
 
     campaign_data = {
         "supermarket": {
@@ -119,7 +160,16 @@ async def create_campaign(
         "pages": llm_pages,
         "products_per_page": products_per_page,
         "template_instruction": template_instruction,
-        "languages": languages
+        "languages": languages,
+        "show_secondary_language": show_secondary_language,
+        "show_discount": show_discount,
+        "show_old_price": show_old_price
     }
 
     return {"status": "success", "campaign_data": campaign_data}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(router, host="0.0.0.0", port=8000)
+    
