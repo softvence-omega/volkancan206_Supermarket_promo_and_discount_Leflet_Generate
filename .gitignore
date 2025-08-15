@@ -1,0 +1,75 @@
+# ------------------------------
+# Python
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# pip cache
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ------------------------------
+# VS Code / IDEs
+# ------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------
+# Environment / secrets
+# ------------------------------
+.env
+.env.*
+*.env
+config/*.env
+HF_TOKEN
+
+# ------------------------------
+# OS files
+# ------------------------------
+.DS_Store
+Thumbs.db
+
+# ------------------------------
+# Logs
+# ------------------------------
+*.log
+
+# ------------------------------
+# Data / uploaded files
+# ------------------------------
+uploads/
+LOGO_UPLOAD_DIR/
+PRODUCT_IMAGE_UPLOAD_DIR/
+*.csv
+*.json
+*.db
+*.sqlite3
+
+# ------------------------------
+# Pytest / coverage
+# ------------------------------
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+# ------------------------------
+# Jupyter / Notebook
+# ------------------------------
+.ipynb_checkpoints/
+*.ipynb
