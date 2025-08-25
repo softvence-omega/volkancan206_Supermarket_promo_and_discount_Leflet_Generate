@@ -23,4 +23,5 @@ image_bytes = query({
     }
 })
 print(image_bytes)
+
 # You can access the image with PIL.Image for example
