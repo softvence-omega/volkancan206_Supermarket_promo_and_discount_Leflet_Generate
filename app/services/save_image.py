@@ -1,19 +1,29 @@
+# app/utils/image_downloader.py
 import requests
 import os
-import uuid
-from fastapi import HTTPException
-def download_image(url: str, save_dir: str, filename: str) -> str:
-    """Download image from URL and save locally with custom filename."""
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
+from app.config import PRODUCT_DIR, LOGO_DIR
 
-        safe_filename = "".join(c for c in filename if c.isalnum() or c in ("_", "-")).strip()
-        file_path = os.path.join(save_dir, f"{safe_filename}_{uuid.uuid4().hex}.jpg")
+def download_image_by_product(product_name: str, image_url: str, folder: str = PRODUCT_DIR) -> str:
 
+    os.makedirs(folder, exist_ok=True)
+    file_path = os.path.join(folder, f"{product_name.lower().replace(' ', '_')}.png")
+
+    if not os.path.exists(file_path):  # Avoid re-downloading
+        url = f"{image_url}"
+        response = requests.get(url)
         with open(file_path, "wb") as f:
             f.write(response.content)
 
-        return file_path
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to download image from {url}: {str(e)}")
+    return file_path
+def download_image_by_logo(supermarket_name: str, supermarket_logo_url: str, folder: str = LOGO_DIR) -> str:
+
+    os.makedirs(folder, exist_ok=True)
+    file_path = os.path.join(folder, f"{supermarket_name.lower().replace(' ', '_')}.png")
+
+    if not os.path.exists(file_path):  # Avoid re-downloading
+        url = f"{supermarket_logo_url}"
+        response = requests.get(url)
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+
+    return file_path

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from datetime import date
 class Product(BaseModel):
     name: str
@@ -8,7 +8,7 @@ class Product(BaseModel):
     old_price: Optional[float] = None
     new_price: Optional[float] = None
     discount: Optional[float] = None
-    image: Optional[HttpUrl] = None
+    image_url: Optional[str] = None
     currency: Optional[str] = "USD"        # currency field
 
 class CampaignRequest(BaseModel):
@@ -16,12 +16,11 @@ class CampaignRequest(BaseModel):
     supermarket_address: str
     campaign_start_date: date
     campaign_end_date: date
-    supermarket_logo: HttpUrl
-    
-    products: List[Product]   
+    supermarket_logo_url: str
+
+    products: List[Product]
     products_per_page: int = 9             # sensible default
     
     template_instruction: str              # e.g. "Discount Flyer", "Hero Banner"
     theme_style: Optional[str] = "modern"  # "festive", "minimal", "bold"
-    background_image: Optional[HttpUrl] = None
     target_languages: Optional[List[str]] = ["en"]  # default English

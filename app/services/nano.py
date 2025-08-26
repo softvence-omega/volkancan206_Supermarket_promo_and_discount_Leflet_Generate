@@ -1,73 +1,4 @@
-# # nano.py
-# from huggingface_hub import InferenceClient
-# from PIL import Image
-# import io
-# import os
 
-# # set your Hugging Face token (environment variable is safer)
-# from app.config import HF_TOKEN  # make sure you've set it in your system
-
-# client = InferenceClient(
-#     model="Qwen/Qwen-Image-Edit",
-#     token=HF_TOKEN
-# )
-
-# # Prompt for leaflet
-# input_images = ["basmoti_rice.png", "milk.png", "shop_logo.png"]
-
-
-
-# # Open all images
-# imgs = [Image.open(p).convert("RGBA") for p in input_images]
-
-# # --- Merge into a single canvas ---
-# # Find max width and total height
-# max_width = max(i.width for i in imgs)
-# total_height = sum(i.height for i in imgs)
-
-# canvas = Image.new("RGBA", (max_width, total_height), (255, 255, 255, 255))
-
-# # Paste images vertically
-# y_offset = 0
-# for im in imgs:
-#     canvas.paste(im, (0, y_offset), im)
-#     y_offset += im.height
-
-# # Save merged image temporarily
-# merged_path = "merged_input.png"
-# canvas.save(merged_path)
-
-# # Send merged image to model
-# with open(merged_path, "rb") as f:
-#     image_bytes = f.read()
-# prompt = """
-# Create a vibrant and eye-catching leaflet design for Interfood Supermarket.
-# The leaflet should prominently feature the supermarket logo{input_images[2]} along with images of fresh basmati rice{input_images[0]} and milk{input_images[1]}.
-# The headline should read:
-# ‘Fresh Offer! 20% OFF on Your Favorite Basmati Rice{input_images[0]} & Milk{input_images[1]}!’ in bold, colorful fonts.
-# Below the headline, display the offer details:
-# ‘Get 20% OFF on all basmati rice{input_images[0]} and milk{input_images[1]}! Stock up and save on the freshest produce and rice.’
-
-# The leaflet should also include the following information:
-# Interfood Supermarket
-# Address: 123 Green Street, Dhaka, Bangladesh
-# Phone: +8801XXXXXXX
-# Email: info@interfood.com
-# Website: www.interfood.com
-
-# Make sure the leaflet is visually appealing with clear, concise text. 
-# Use bright colors to make it attractive and grab attention.
-# """
-# result = client.image_to_image(
-#     image=image_bytes,
-#     prompt=prompt
-# )
-
-# # Save output
-# output_path = "leaflet_final.png"
-# result.save(output_path)
-# print(f"✅ Leaflet created and saved to {output_path}")
-# nano.py
 from huggingface_hub import InferenceClient
 from PIL import Image, ImageDraw, ImageFont
 import os, math
@@ -178,4 +109,19 @@ result = client.image_to_image(
 
 output_path = "leaflet_final.png"
 result.save(output_path)
-print(f"✅ Leaflet created dynamically and saved to {output_path}")
+print(f" Leaflet created dynamically and saved to {output_path}")
+
+def _template_generate(flyer_prompt: str, product_list: list):
+    input_images = {}
+    for product in product_list:
+        input_images={
+            product['name']: product['product_path']
+        }
+
+    result = client.image_to_image(
+        image=image_bytes,
+        prompt=flyer_prompt
+    )
+    output_path = "leaflet_final.png"
+result.save(output_path)
+print(f" Leaflet created dynamically and saved to {output_path}")

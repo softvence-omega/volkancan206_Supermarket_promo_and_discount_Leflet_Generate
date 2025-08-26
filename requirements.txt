@@ -11,3 +11,6 @@ transformers
 python-dotenv
 
 requests
+protobuf
+sentencepiece
+bitsandbytes
