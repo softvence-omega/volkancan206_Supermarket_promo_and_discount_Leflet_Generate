@@ -27,83 +27,6 @@ else:
         torch_dtype=torch.float32,
         token=HF_TOKEN
     )
-
-
-# def generate_prompt_design(request: dict) -> str:
-#     """
-#     Generate an enhanced flyer/leaflet design prompt using an LLM.
-#     Input: CampaignRequest (dict or Pydantic model)
-#     Output: Enhanced marketing design prompt (string)
-#     """
-#     # Handle both dict and Pydantic model inputs
-#     request_data = request.get("data", {}) if hasattr(request, "get") else request
-#     print(f"[DEBUG] Request Data: {request_data}")
-
-#     # --- Build Base Prompt ---
-#     base_prompt = f"""
-#     Supermarket: {request_data.get('supermarket_name')}
-#     Address: {request_data.get('supermarket_address')}
-#     Campaign Period: {request_data.get('campaign_start_date')} → {request_data.get('campaign_end_date')}
-#     Campaign Type: {request_data.get('template_instruction')}
-#     Theme Style: {request_data.get('theme_style')}
-
-#     Products on Promotion:
-#     {chr(10).join([f"- {p.name}: {p.description or ''} (Old Price: {p.old_price} {p.currency}, New Price: {p.new_price} {p.currency}, Discount: {p.discount}%)" for p in request_data.get('products', [])])}
-#     """
-
-#    # --- LLM Instruction ---
-#     system_prompt = f"""
-#         You are an expert **visual design prompt engineer**.
-#         Your task is to transform the following supermarket campaign details 
-#         into a **single powerful prompt** for generating a **leaflet/flyer image** 
-#         with an AI image generation model (e.g., Stable Diffusion).
-
-#          Enhancement Guidelines:
-#         1. Describe the **overall layout** (e.g., A4 leaflet, bold headline at top, product grid in center, supermarket logo at corner).
-#         2. Add **visual elements** (discount tags, banners, colorful sale stickers, price labels).
-#         3. Specify **color schemes** that attract customers (e.g., red/yellow for discounts, green for freshness).
-#         4. Recommend **typography style** (bold, modern, sans-serif for clarity).
-#         5. Highlight **visual hierarchy** (headline → product images → discounts → address).
-#         6. Ensure the style matches the theme: "{request_data.get('theme_style')}".
-#         7. Keep the output as a **single descriptive prompt for image generation**.
-
-#         --- Campaign Brief ---
-#         {base_prompt}
-
-#         --- Final Image Generation Prompt (ONLY the improved version, no explanation) ---
-#     """
-
-
-#     try:
-#         # Tokenize input
-#         inputs = tokenizer(system_prompt, return_tensors="pt", truncation=True, max_length=4000)
-#         inputs = {k: v.to(device) for k, v in inputs.items()}
-
-#         # Generate response
-#         with torch.no_grad():
-#             outputs = model.generate(
-#                 **inputs,
-#                 max_new_tokens=1000,
-#                 temperature=0.7,
-#                 do_sample=True,
-#                 pad_token_id=tokenizer.eos_token_id,
-#                 repetition_penalty=1.1
-#             )
-
-#         # Decode text
-#         generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-#         # Extract clean enhanced prompt
-#         if "--- Enhanced Prompt" in generated_text:
-#             augmented_prompt = generated_text.split("--- Enhanced Prompt")[-1].strip()
-#         else:
-#             augmented_prompt = generated_text[len(system_prompt):].strip()
-
-#         return augmented_prompt 
-
-#     except Exception as e:
-#         print(f"[ERROR] Failed to generate augmented prompt: {str(e)}")
-#         return base_prompt
 def generate_prompt_design(request) -> str:
     """
     Generate an enhanced flyer/leaflet design prompt using an LLM.
@@ -135,32 +58,65 @@ def generate_prompt_design(request) -> str:
         for p in request_data.get('products', [])
     ])}
     """
-
+    product_names = ", ".join([p["name"] for p in request_data.get("products", [])])
     # --- LLM Instruction ---
     system_prompt = f"""
-    You are an expert **visual design prompt engineer**.
+    You are an expert visual design prompt engineer.
     Your task is to transform the following supermarket campaign details 
-    into a **single powerful prompt** for generating a **leaflet/flyer image** 
-    with an AI image generation model (e.g., Stable Diffusion).
+    into a single powerful prompt for generating a leaflet/flyer image 
+    with an AI image generation model. 
+        DESIGN REQUIREMENTS:
 
-    Enhancement Guidelines:
-    1. Describe the **overall layout** (e.g., A4 leaflet, bold headline at top, product grid in center, supermarket logo at corner).
-    2. Add **visual elements** (discount tags, banners, colorful sale stickers, price labels).
-    3. Specify **color schemes** that attract customers (e.g., red/yellow for discounts, green for freshness).
-    4. Recommend **typography style** (bold, modern, sans-serif for clarity).
-    5. Highlight **visual hierarchy** (headline → product images → discounts → address).
-    6. Ensure the style matches the theme: "{request_data.get('theme_style')}".
-    7. Keep the output as a **single descriptive prompt for image generation**.
+        1. Layout & Grid System:
+        - Dynamically divide A4 space based on {len(request_data.get('products', []))} products
+        - For 1-3 products: Use large grid with prominent product showcase
+        - For 4-6 products: Use 2x3 or 3x2 balanced grid
+        - For 7-12 products: Use 3x4 or 4x3 compact grid
+        - For 12+ products: Use 4x4+ dense grid with smaller product cards
+        - Each layout should feel unique and well-balanced
 
-    --- Campaign Brief ---
-    {base_prompt}
+        2. Product Display (CRITICAL):
+        - Product name MUST appear exactly as written: '{product_names}' - character-for-character accuracy
+        - Place product name directly below product image
+        - Show prices clearly: Strike-through old price, highlight new price
+        - Display discount percentage prominently
+        - Ensure all text is legible and well-contrasted
 
-    --- Final Image Generation Prompt (ONLY the improved version, no explanation) ---
-    """
+        3. Visual Hierarchy:
+        - Header: Store name (large, bold) + campaign period
+        - Body: Product grid with images, names, and prices
+        - Footer: Store address and additional information
 
+        4. Typography & Design:
+        - Use creative, modern fonts that enhance readability
+        - Vary font weights and sizes for visual interest
+        - Support multilingual text (English, Turkish, Japanese characters)
+        - Apply consistent color scheme matching theme style
+
+        5. Color & Branding:
+        - Use theme-appropriate color palette
+        - Create visual consistency without repetitive logo placement
+        - Apply attractive gradients, shadows, or modern design elements
+        - Ensure sufficient contrast for all text elements
+
+        6. Quality Standards:
+        - High-resolution, print-ready quality
+        - Professional supermarket aesthetic
+        - Clean, organized layout with proper spacing
+        - Mobile-friendly visual hierarchy
+
+        STRICT ACCURACY REQUIREMENTS:
+        - Product names: 100% character-accurate reproduction
+        - Prices: Exact numerical values with correct currency symbols
+        - Store information: Precise spelling and formatting
+        - Campaign dates: Accurate date representation
+
+        Generate a visually stunning, unique flyer layout that maximizes visual appeal while maintaining perfect information accuracy.
+        """
+    new_prompt = base_prompt + system_prompt
     try:
         # Tokenize input
-        inputs = tokenizer(system_prompt, return_tensors="pt", truncation=True, max_length=4000)
+        inputs = tokenizer(new_prompt, return_tensors="pt", truncation=True, max_length=4000)
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generate response
@@ -176,14 +132,12 @@ def generate_prompt_design(request) -> str:
 
         # Decode text
         generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print("=== Generated Enhanced Prompt ===")
+        print(generated_text)
 
-        # Extract clean enhanced prompt
-        if "--- Final Image Generation Prompt" in generated_text:
-            augmented_prompt = generated_text.split("--- Final Image Generation Prompt")[-1].strip()
-        else:
-            augmented_prompt = generated_text[len(system_prompt):].strip()
 
-        return augmented_prompt or base_prompt
+
+        return generated_text.strip()
 
     except Exception as e:
         print(f"[ERROR] Failed to generate augmented prompt: {str(e)}")
@@ -208,7 +162,7 @@ if __name__ == "__main__":
                 old_price=3.5,
                 new_price=2.8,
                 discount=20,
-                image_url="https://example.com/images/apple.png",
+                image_url="apple.png",
                 currency="USD"
             ),
             Product(
@@ -217,7 +171,7 @@ if __name__ == "__main__":
                 old_price=2.0,
                 new_price=1.7,
                 discount=15,
-                image_url="https://example.com/images/milk.png",
+                image_url="milk.png",
                 currency="USD"
             ),
             Product(
@@ -226,7 +180,7 @@ if __name__ == "__main__":
                 old_price=1.2,
                 new_price=1.0,
                 discount=17,
-                image_url="https://example.com/images/onion.png",
+                image_url="onion.png",
                 currency="USD"
             ),
             Product(
@@ -235,7 +189,7 @@ if __name__ == "__main__":
                 old_price=1.5,
                 new_price=1.2,
                 discount=20,
-                image_url="https://example.com/images/potato.png",
+                image_url="potato.png",
                 currency="USD"
             )
         ],

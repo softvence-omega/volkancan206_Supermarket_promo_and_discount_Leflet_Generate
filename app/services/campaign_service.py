@@ -31,10 +31,12 @@ def campaign_generate(request: dict):
     # Update the request with the processed products
     request['products'] = updated_products
     request['logo_path'] = logo_path
-
+    Product_list={
+        product['name']:product['product_path']
+    }
     # Generate the flyer design prompt using updated products
     flyer_prompt = generate_prompt_design(request)
-    leaflet_path = _template_generate(flyer_prompt, request['products'])
+    leaflet_path = _template_generate(flyer_prompt, Product_list)
 
     return {
         "leaflet_path": leaflet_path

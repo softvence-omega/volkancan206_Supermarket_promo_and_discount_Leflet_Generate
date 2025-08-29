@@ -1,127 +1,198 @@
 
 from huggingface_hub import InferenceClient
-from PIL import Image, ImageDraw, ImageFont
-import os, math
+from PIL import Image
+import os
+from openai import OpenAI
+# from app.config import HF_TOKEN
+HF_TOKEN = "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"
+from app.config import HF_TOKEN,OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
+def prompt_design(product_info: dict) -> str:
+    """
+    Generate a supermarket product card design suggestion using OpenAI.
+    """
 
-from app.config import HF_TOKEN  # your token
+    system_prompt = f"""
+    You are a professional supermarket product card designer.
+    Create a clear and visually appealing design suggestion for the following product:
 
-client = InferenceClient(
+    - Layout: white background, rounded corners, soft drop shadow
+    - Product Name: "{product_info['name']}" (bold, headline, centered)
+    - Old Price: "{product_info['old_price']} {product_info['currency']}" with strikethrough (red)
+    - New Price: "{product_info['new_price']} {product_info['currency']}" large, bold, green
+    - Discount: "{product_info['discount']}%" shown inside a red circular badge at top-right
+    - Extra Info at bottom: "Description: {product_info['description']}"
+    - Place a high-quality photo of the product on the left side
+    - Keep design minimal, professional, clean, print-ready
+    - Suitable for supermarket grocery and vegetable products
+    - No extra text, logos, or branding
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o",  # fast + affordable, can change to gpt-4o for higher quality
+        messages=[
+            {"role": "system", "content": "You are an expert in graphic/product card design."},
+            {"role": "user", "content": system_prompt}
+        ],
+        temperature=0.7
+    )
+    prompt = response.choices[0].message.content.strip()
+    print(f"Design Prompt for {product_info['name']}:-------------------------------\n{prompt}\n")
+    return prompt
+
+client1 = InferenceClient(
     model="Qwen/Qwen-Image-Edit",
     token=HF_TOKEN
 )
+def product_card_design(product_info: dict):
+    image_path = product_info["image_url"]
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
 
-# --- Input images ---
-# Add as many as you want, it will auto-layout
-input_images = {
-    "Basmati Rice": "basmoti_rice.png",
-    "Milk": "milk.png",
-    "Shop Logo": "shop_logo.png"
-}
+    prompt =f"""
+    You are a professional supermarket product card designer.
+    Create a clear and visually appealing design suggestion for the following product:
 
-# Open images
-imgs = {name: Image.open(path).convert("RGBA") for name, path in input_images.items()}
+    - Layout: white background, rounded corners, soft drop shadow
+    - Product Name: "{product_info['name']}" (bold, headline, centered)
+    - Old Price: "{product_info['old_price']} {product_info['currency']}" with strikethrough (red)
+    - New Price: "{product_info['new_price']} {product_info['currency']}" large, bold, green
+    - Discount: "{product_info['discount']}%" shown inside a red circular badge at top-right
+    - Extra Info at bottom: "Description: {product_info['description']}"
+    - Place a high-quality photo of the product on the left side
+    - Keep design minimal, professional, clean, print-ready
+    - Suitable for supermarket grocery and vegetable products
+    - No extra text, logos, or branding
+    """
 
-# --- Card settings ---
-card_w, card_h = 400, 400
-padding = 30
+    result = client1.image_to_image(
+        image=image_bytes,
+        prompt=prompt
+    )
 
-# Make product cards
-cards = []
-for name, im in imgs.items():
-    if name == "Shop Logo":
-        continue  # logo separate
+    output_path = f"{product_info['name'].replace(' ', '_')}_card.png"
+    result.save(output_path)
 
-    card = Image.new("RGBA", (card_w, card_h), (255, 255, 255, 255))
-    im = im.resize((card_w - 40, card_h - 100))  # fit product
-    card.paste(im, (20, 20), im)
+    return result
 
-    # Add product name + offer
-    draw = ImageDraw.Draw(card)
-    try:
-        font = ImageFont.truetype("arial.ttf", 28)
-    except:
-        font = ImageFont.load_default()
-    draw.text((20, card_h - 60), f"{name}\n20% OFF", fill="black", font=font)
+def generate_leaflet(flyer_prompt: str, product_list: list, shop_logo: str = None, output_path: str = "leaflet_final.png"):
 
-    cards.append(card)
-
-# --- Dynamic grid calculation ---
-num_products = len(cards)
-cols = 2  # 2 per row (you can make it 3 if more products)
-rows = math.ceil(num_products / cols)
-
-canvas_w = cols * (card_w + padding) + padding
-canvas_h = rows * (card_h + padding) + 500  # space for header/footer
-
-canvas = Image.new("RGBA", (canvas_w, canvas_h), (255, 255, 255, 255))
-
-# --- Header ---
-logo = imgs["Shop Logo"].resize((200, 200))
-canvas.paste(logo, ((canvas_w - logo.width) // 2, 20), logo)
-
-draw = ImageDraw.Draw(canvas)
-try:
-    font_head = ImageFont.truetype("arialbd.ttf", 45)
-except:
-    font_head = ImageFont.load_default()
-draw.text((padding, 250), "Fresh Offer! 20% OFF on Your Favorites!", fill="red", font=font_head)
-
-# --- Place product cards ---
-y_start = 320
-x, y = padding, y_start
-for i, card in enumerate(cards):
-    canvas.paste(card, (x, y), card)
-    x += card_w + padding
-    if (i + 1) % cols == 0:
-        x = padding
-        y += card_h + padding
-
-# --- Footer ---
-try:
-    font_footer = ImageFont.truetype("arial.ttf", 25)
-except:
-    font_footer = ImageFont.load_default()
-footer_text = """Interfood Supermarket
-123 Green Street, Dhaka
-Phone: +8801XXXXXXX
-Email: info@interfood.com
-Website: www.interfood.com
-"""
-draw.text((padding, canvas_h - 150), footer_text, fill="black", font=font_footer)
-
-merged_path = "leaflet_layout.png"
-canvas.save(merged_path)
-
-# --- Send to model for beautification ---
-with open(merged_path, "rb") as f:
-    image_bytes = f.read()
-
-prompt = """
-Turn this layout into a professional, colorful supermarket leaflet.
-Keep products inside their cards but add shadows, borders, and a vibrant background.
-Make headline bold and footer cleanly styled.
-"""
-
-result = client.image_to_image(
-    image=image_bytes,
-    prompt=prompt
-)
-
-output_path = "leaflet_final.png"
-result.save(output_path)
-print(f" Leaflet created dynamically and saved to {output_path}")
-
-def _template_generate(flyer_prompt: str, product_list: list):
-    input_images = {}
+    # --- Step 1: Generate product cards ---
+    product_cards = []
     for product in product_list:
-        input_images={
-            product['name']: product['product_path']
-        }
+       card_img = product_card_design(product)
+       product_cards.append(card_img)
 
-    result = client.image_to_image(
+    # --- Step 2: Load logo if exists ---
+    logo_img = None
+    if shop_logo and os.path.exists(shop_logo):
+        logo_img = Image.open(shop_logo).convert("RGBA")
+
+    # --- Step 3: Create base canvas ---
+    canvas_w, canvas_h = 1200, 1600  # adjust size as needed
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (255, 255, 255, 255))
+
+    # Place logo at top center
+    y_offset = 30
+    if logo_img:
+        logo_img = logo_img.resize((250, 250))
+        canvas.paste(logo_img, ((canvas_w - logo_img.width)//2, y_offset), logo_img)
+        y_offset += logo_img.height + 30
+
+    # Place product cards in grid layout
+    x, y = 50, y_offset
+    max_w, max_h = 350, 350
+    padding_x, padding_y = 50, 50
+    for card in product_cards:
+        card_resized = card.resize((max_w, max_h))
+        canvas.paste(card_resized, (x, y), card_resized)
+        y += max_h + padding_y
+        if y + max_h > canvas_h - 50:
+            y = y_offset
+            x += max_w + padding_x
+
+    # --- Step 4: Save base layout for reference ---
+    base_layout_path = "leaflet_base.png"
+    canvas.save(base_layout_path)
+    print(f"✅ Base layout saved at {base_layout_path}")
+
+    # --- Step 5: Enhance with AI (optional) ---
+    with open(base_layout_path, "rb") as f:
+        image_bytes = f.read()
+    result = client1.image_to_image(
         image=image_bytes,
         prompt=flyer_prompt
     )
-    output_path = "leaflet_final.png"
-result.save(output_path)
-print(f" Leaflet created dynamically and saved to {output_path}")
+    result.save(output_path)
+    print(f"✅ Leaflet generated and saved at {output_path}")
+
+    return output_path
+
+
+# Example usage
+if __name__ == "__main__":
+
+    example_product = {
+            "name": "Apple",
+            "description": "Fresh red apples, crisp and juicy",
+            "old_price": 3.5,
+            "new_price": 2.8,
+            "discount": 20,
+            "image_url": "apple.png",
+            "currency": "USD"
+        }
+    img=product_card_design(example_product)
+    print("Product card image generated.",img)
+    products = [
+        {
+            "name": "Potato",
+            "description": "Fresh potatoes, per lb",
+            "old_price": 1.5,
+            "new_price": 1.2,
+            "discount": 20,
+            "image_url": "potato.png",
+            "currency": "USD"
+        },
+        {
+            "name": "Milk",
+            "description": "Organic fresh milk, 1L",
+            "old_price": 2.5,
+            "new_price": 2.0,
+            "discount": 20,
+            "image_url": "milk.png",
+            "currency": "USD"
+        },
+        {
+            "name": "Onion",
+            "description": "Yellow onions, per lb",
+            "old_price": 1.2,
+            "new_price": 1.0,
+            "discount": 17,
+            "image_url": "onion.png",
+            "currency": "USD"
+        },
+        {
+            "name": "Apple",
+            "description": "Fresh red apples, crisp and juicy",
+            "old_price": 3.5,
+            "new_price": 2.8,
+            "discount": 20,
+            "image_url": "apple.png",
+            "currency": "USD"
+        }
+    ]
+
+    prompt = """
+    Create a professional, colorful supermarket leaflet.
+    Add a big headline: "新鮮なお得情報 - 期間限定！"
+    Use a vibrant background, modern typography, and highlight discounts in bold red.
+    and footer for placed supermarket address:  
+        Interfood Supermarket
+        123 Green Street, Dhaka
+        Phone: +8801XXXXXXX
+        Email: info@interfood.com
+        Website: www.interfood.com
+    """
+    
+
+    #generate_leaflet(prompt, products, shop_logo="shop_logo.png", output_path="leaflet_new_final.png")

@@ -34,7 +34,7 @@ def generate_system_prompt(product_name: str, max_tokens: int = 150) -> str:
     You are a creative assistant that generates professional, high-quality image description prompts
     for supermarket products. The prompt should:
     - Focus only on the product "{product_name}"
-    - Suggest realistic commercial/advertising arrangements (e.g., multiple apples and a sliced apple, bunch of bananas, basket of potatoes)
+    - Suggest realistic commercial/advertising arrangements (e.g. slice, basket of {product_name})
     - Include proper lighting, clean background, visually appealing composition
     - Suitable for online ads or e-commerce
     - Keep it concise and ready for text-to-image generation
@@ -63,7 +63,6 @@ client = InferenceClient(
 def generate_product_image(product_name: str, save_path: str = None) -> str:
 
     prompt = generate_system_prompt(product_name)
-    print(f"Generated prompt for '{product_name}': {prompt}")
 
     # Generate image
     image = client.text_to_image(
@@ -81,5 +80,5 @@ def generate_product_image(product_name: str, save_path: str = None) -> str:
 
 # Example usage
 if __name__ == "__main__":
-    file_path = generate_product_image("potato")
+    file_path = generate_product_image("one bottle milk")
     print(f"Image saved at: {file_path}")
