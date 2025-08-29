@@ -1,4 +1,4 @@
-from app.config import HF_TOKEN
+from app.config import HF_TOKEN,PRODUCT_DIR
 from huggingface_hub import InferenceClient
 import os
 from diffusers import DiffusionPipeline
@@ -70,15 +70,19 @@ def generate_product_image(product_name: str, save_path: str = None) -> str:
         model="black-forest-labs/FLUX.1-dev",
     )
     
-    # Default save path if none provided
+ 
+    # If no save_path provided, create one
     if save_path is None:
         safe_name = product_name.replace(" ", "_").lower()
-        save_path = f"{safe_name}.png"
+        save_path = os.path.join(PRODUCT_DIR, f"{safe_name}.png")
+    else:
+        save_path = os.path.join(PRODUCT_DIR, save_path)
     
     image.save(save_path)
+    print("Generated product image path------", save_path)
     return save_path
 
 # Example usage
 if __name__ == "__main__":
-    file_path = generate_product_image("one bottle milk")
+    file_path = generate_product_image("one woman hair")
     print(f"Image saved at: {file_path}")

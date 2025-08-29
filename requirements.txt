@@ -1,6 +1,4 @@
 
-# gradio 
-# spaces
 fastapi
 uvicorn
 python-multipart

@@ -1,9 +1,8 @@
 
 from app.services.save_image import download_image_by_product, download_image_by_logo
-from app.services.tamplate_prompt_design import generate_prompt_design
 from app.services.product_name_image import generate_product_image
-from app.services.nano import _template_generate
-
+from app.config import LOGO_DIR, PRODUCT_DIR, GENERATED_DIR
+from app.services.nano import product_card_design
 def campaign_generate(request: dict):
     supermarket_name = request.get("supermarket_name")
     supermarket_logo_url = request.get("supermarket_logo")
@@ -21,8 +20,10 @@ def campaign_generate(request: dict):
 
         if product_image_url:
             product_image_path = download_image_by_product(product_name, product_image_url)
+            print("product downloaded path------", product_image_path)
         else:
             product_image_path = generate_product_image(product_name)
+            print("Generated product image path------", product_image_path)
 
         # Add image path to product dict
         product['product_path'] = product_image_path
@@ -34,11 +35,30 @@ def campaign_generate(request: dict):
     Product_list={
         product['name']:product['product_path']
     }
-    # Generate the flyer design prompt using updated products
-    flyer_prompt = generate_prompt_design(request)
-    leaflet_path = _template_generate(flyer_prompt, Product_list)
 
-    return {
-        "leaflet_path": leaflet_path
+    # Generate product cards for each product
+    for product in updated_products:
+        product_card_path = product_card_design(product)
+        print("Product card generated path------", product_card_path)
+
+
+
+if __name__ == "__main__":
+    example_request = {
+        "supermarket_name": "Interfood Supermarket",
+        "supermarket_logo": "/app/temp/logo/shop_logo.png",
+        "products": [
+            {
+                "name": "Hand towel",
+                "description": "Soft and absorbent hand towel",
+                "old_price": 3.5,
+                "new_price": 2.8,
+                "discount": 20,
+                "image_url": "/app/temp/product_images/tissue.png",
+                "currency": "$"
+            }
+        ]
     }
 
+    product_card_design(example_request["products"])
+    print("Campaign generation completed.")
