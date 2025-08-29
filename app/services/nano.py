@@ -2,43 +2,44 @@
 from huggingface_hub import InferenceClient
 from PIL import Image
 import os
-from openai import OpenAI
-# from app.config import HF_TOKEN
-HF_TOKEN = "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"
-from app.config import HF_TOKEN,OPENAI_API_KEY
-client = OpenAI(api_key=OPENAI_API_KEY)
-def prompt_design(product_info: dict) -> str:
-    """
-    Generate a supermarket product card design suggestion using OpenAI.
-    """
+from app.config import HF_TOKEN
+# from openai import OpenAI
+# # from app.config import HF_TOKEN
+# HF_TOKEN = "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"
+# from app.config import OPENAI_API_KEY
+# client = OpenAI(api_key=OPENAI_API_KEY)
+# def prompt_design(product_info: dict) -> str:
+#     """
+#     Generate a supermarket product card design suggestion using OpenAI.
+#     """
 
-    system_prompt = f"""
-    You are a professional supermarket product card designer.
-    Create a clear and visually appealing design suggestion for the following product:
+#     system_prompt = f"""
+#     You are a professional supermarket product card designer.
+#     Create a clear and visually appealing design suggestion for the following product:
 
-    - Layout: white background, rounded corners, soft drop shadow
-    - Product Name: "{product_info['name']}" (bold, headline, centered)
-    - Old Price: "{product_info['old_price']} {product_info['currency']}" with strikethrough (red)
-    - New Price: "{product_info['new_price']} {product_info['currency']}" large, bold, green
-    - Discount: "{product_info['discount']}%" shown inside a red circular badge at top-right
-    - Extra Info at bottom: "Description: {product_info['description']}"
-    - Place a high-quality photo of the product on the left side
-    - Keep design minimal, professional, clean, print-ready
-    - Suitable for supermarket grocery and vegetable products
-    - No extra text, logos, or branding
-    """
+#     - Layout: white background, rounded corners, soft drop shadow
+#     - Product Name: "{product_info['name']}" (bold, headline, centered)
+#     - Old Price: "{product_info['old_price']} {product_info['currency']}" with strikethrough (red)
+#     - New Price: "{product_info['new_price']} {product_info['currency']}" large, bold, green
+#     - Discount: "{product_info['discount']}%" shown inside a red circular badge at top-right
+#     - Extra Info at bottom: "Description: {product_info['description']}"
+#     - Place a high-quality photo of the product on the left side
+#     - Keep design minimal, professional, clean, print-ready
+#     - Suitable for supermarket grocery and vegetable products
+#     - No extra text, logos, or branding
+#     """
 
-    response = client.chat.completions.create(
-        model="gpt-4o",  # fast + affordable, can change to gpt-4o for higher quality
-        messages=[
-            {"role": "system", "content": "You are an expert in graphic/product card design."},
-            {"role": "user", "content": system_prompt}
-        ],
-        temperature=0.7
-    )
-    prompt = response.choices[0].message.content.strip()
-    print(f"Design Prompt for {product_info['name']}:-------------------------------\n{prompt}\n")
-    return prompt
+#     response = client.chat.completions.create(
+#         model="gpt-4o",  # fast + affordable, can change to gpt-4o for higher quality
+#         messages=[
+#             {"role": "system", "content": "You are an expert in graphic/product card design."},
+#             {"role": "user", "content": system_prompt}
+#         ],
+#         temperature=0.7
+#     )
+#     prompt = response.choices[0].message.content.strip()
+#     print(f"Design Prompt for {product_info['name']}:-------------------------------\n{prompt}\n")
+#     return prompt
 
 client1 = InferenceClient(
     model="Qwen/Qwen-Image-Edit",
@@ -49,20 +50,42 @@ def product_card_design(product_info: dict):
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
-    prompt =f"""
-    You are a professional supermarket product card designer.
-    Create a clear and visually appealing design suggestion for the following product:
+    # prompt = f"""
+    # Create a professional product card with these exact specifications:
+    
+    # LAYOUT (top to bottom):
+    # 1. Product image: centered, occupy upper 30% of card, maintain aspect ratio
+    # 2. Text section: lower 70% with white/light background, adequate padding
+    
+    # VISUAL ELEMENTS:
+    # - Card: white background, rounded corners (15px), soft drop shadow
+    # - Discount badge: red circle, top-right corner of image, white text "{product_info['discount']}% OFF"
+    
+    # TEXT FORMATTING (in text section, centered alignment):
+    # - Product name: "{product_info['name']}" - large bold font (24px), dark color
+    # - Description: "{product_info['description']}" - medium font (16px), gray color  
+    # - Old price: "{product_info['currency']}{product_info['old_price']}" - crossed out with line-through, gray color
+    # - New price: "{product_info['currency']}{product_info['new_price']}" - large bold font (22px), green color (#00B050)
+    
+    # CRITICAL REQUIREMENTS:
+    # - Currency symbol must appear before the number
+    # - Old price must have visible strikethrough/line-through effect
+    # - Ensure sufficient space between image and text elements
+    # - Professional grocery store aesthetic
+    # - Clean, minimal design with proper spacing
+    # - High resolution, print-ready quality
+    
+    # Style: Modern supermarket product card, clean typography, professional lighting
+    # """
 
-    - Layout: white background, rounded corners, soft drop shadow
-    - Product Name: "{product_info['name']}" (bold, headline, centered)
-    - Old Price: "{product_info['old_price']} {product_info['currency']}" with strikethrough (red)
-    - New Price: "{product_info['new_price']} {product_info['currency']}" large, bold, green
-    - Discount: "{product_info['discount']}%" shown inside a red circular badge at top-right
-    - Extra Info at bottom: "Description: {product_info['description']}"
-    - Place a high-quality photo of the product on the left side
-    - Keep design minimal, professional, clean, print-ready
-    - Suitable for supermarket grocery and vegetable products
-    - No extra text, logos, or branding
+    prompt = f"""
+    1. Take this product image
+    2. Add white space below the image  
+    3. Write "{product_info['name']}" in bold
+    4. Write "Old Price: {product_info['currency']}{product_info['old_price']}" with strikethrough
+    5. Write "New Price: {product_info['currency']}{product_info['new_price']}" in green
+    6. Add red "{product_info['discount']}% OFF" badge.
+    Professional product card design.
     """
 
     result = client1.image_to_image(
@@ -73,7 +96,7 @@ def product_card_design(product_info: dict):
     output_path = f"{product_info['name'].replace(' ', '_')}_card.png"
     result.save(output_path)
 
-    return result
+    return output_path
 
 def generate_leaflet(flyer_prompt: str, product_list: list, shop_logo: str = None, output_path: str = "leaflet_final.png"):
 
@@ -133,16 +156,16 @@ def generate_leaflet(flyer_prompt: str, product_list: list, shop_logo: str = Non
 if __name__ == "__main__":
 
     example_product = {
-            "name": "Apple",
-            "description": "Fresh red apples, crisp and juicy",
+            "name": "Hand towel",
+            "description": "Soft and absorbent hand towel",
             "old_price": 3.5,
             "new_price": 2.8,
             "discount": 20,
-            "image_url": "apple.png",
-            "currency": "USD"
+            "image_url": "tissue.png",
+            "currency": "$"
         }
     img=product_card_design(example_product)
-    print("Product card image generated.",img)
+    print("Product card image generated in -----",img)
     products = [
         {
             "name": "Potato",
