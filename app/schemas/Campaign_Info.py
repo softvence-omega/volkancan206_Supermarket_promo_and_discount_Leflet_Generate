@@ -24,4 +24,4 @@ class CampaignRequest(BaseModel):
     
     template_instruction: str              # e.g. "Discount Flyer", "Hero Banner"
     theme_style: Optional[str] = "modern"  # "festive", "minimal", "bold"
-    target_languages: Optional[List[str]] = ["en"]  # default English
+
