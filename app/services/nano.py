@@ -17,8 +17,10 @@ def product_card_design(product_info):
         product_info = product_info.model_dump()
 
     print("Designing product card for:", product_info['name'])
-    print("Using image:", product_info['product_path'])
-    image_path = product_info['product_path']
+    # Use image_url if product_path is not available
+    image_path = product_info.get('product_path') or product_info.get('image_url')
+    print("Using image:", image_path)
+    
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
@@ -42,84 +44,127 @@ def product_card_design(product_info):
     return output_path
 
 def template_Design(Super_market_info: dict, product_list: list, shop_logo: str, output_path: str):
-    # --- A4 size in pixels at 72 DPI (595x842 pixels) ---
-    a4_width, a4_height = 595, 842
-    padding = 30
-    max_cards_per_row = 3
-    max_rows = 3
-    max_cards_per_page = max_cards_per_row * max_rows  # 9 per flyer
-
-    # --- Open shop logo ---
-    logo = Image.open(shop_logo).convert("RGBA")
-    logo_max_width = a4_width - 2 * padding
-    if logo.width > logo_max_width:
-        ratio = logo_max_width / logo.width
-        logo = logo.resize((int(logo.width * ratio), int(logo.height * ratio)), Image.LANCZOS)
+    # --- A4 width, dynamic height based on product count ---
+    a4_width = 595
+    base_height = 400  # Minimum height
+    max_cards_per_page = 6  # Maximum 6 cards per page
+    
+    # Calculate total products to determine sizing scale
+    # (Currently used for future enhancements)
 
     flyers = []
     for flyer_index in range(0, len(product_list), max_cards_per_page):
         chunk = product_list[flyer_index: flyer_index + max_cards_per_page]
+        num_cards = len(chunk)
+        
+        # --- Dynamic flyer height based on number of products ---
+        # More products = taller flyer to accommodate them properly
+        if num_cards == 1:
+            flyer_height = base_height + 200  # 600px total
+        elif num_cards == 2:
+            flyer_height = base_height + 300  # 700px total
+        elif num_cards <= 4:
+            flyer_height = base_height + 400  # 800px total
+        elif num_cards <= 6:
+            flyer_height = base_height + 500  # 900px total - maximum height
+        else:
+            flyer_height = base_height + 500  # 900px total
+        
+        # Use 95% of the flyer space for logo + cards
+        usable_height = int(flyer_height * 0.95)
+        padding = int(flyer_height * 0.025)  # 2.5% for padding
+        
+        # --- Dynamic layout calculation ---
+        if num_cards == 1:
+            cards_per_row = 1
+        elif num_cards == 2:
+            cards_per_row = 2
+        elif num_cards <= 4:
+            cards_per_row = 2
+        else:  # 5-6 cards
+            cards_per_row = 3
+            
+        num_rows = (num_cards + cards_per_row - 1) // cards_per_row
+        
+        # --- Divide usable space: 20% for logo, 80% for cards ---
+        logo_section_height = int(usable_height * 0.20)
+        cards_section_height = int(usable_height * 0.80)
+        
+        # --- Load and resize logo to fit its section ---
+        logo = Image.open(shop_logo).convert("RGBA")
+        logo_max_width = a4_width - 2 * padding
+        logo_max_height = logo_section_height - padding
+        
+        if logo.width > logo_max_width or logo.height > logo_max_height:
+            width_ratio = logo_max_width / logo.width
+            height_ratio = logo_max_height / logo.height
+            ratio = min(width_ratio, height_ratio)
+            logo = logo.resize((int(logo.width * ratio), int(logo.height * ratio)), Image.LANCZOS)
 
-        # --- Collect product cards ---
+        # --- Generate and resize product cards to fit cards section ---
         product_cards = []
+        
+        # Calculate card dimensions based on available space and number of cards
+        available_width = a4_width - (cards_per_row + 1) * padding
+        card_max_width = available_width // cards_per_row
+        
+        available_height = cards_section_height - (num_rows + 1) * padding
+        card_max_height = available_height // num_rows
+        
         for product in chunk:
             card_path = product_card_design(product)
             card = Image.open(card_path).convert("RGBA")
-            card_max_size = (a4_width - (max_cards_per_row + 1) * padding) // max_cards_per_row
-            if card.width > card_max_size or card.height > card_max_size:
-                ratio = card_max_size / max(card.width, card.height)
+            
+            # Resize card to fit within calculated bounds
+            if card.width > card_max_width or card.height > card_max_height:
+                width_ratio = card_max_width / card.width
+                height_ratio = card_max_height / card.height
+                ratio = min(width_ratio, height_ratio)
                 card = card.resize((int(card.width * ratio), int(card.height * ratio)), Image.LANCZOS)
             product_cards.append(card)
 
-        # --- Layout dimensions ---
-        num_cards = len(product_cards)
-        cards_per_row = min(max_cards_per_row, num_cards) if num_cards > 0 else 1
-        num_rows = (num_cards + cards_per_row - 1) // cards_per_row
-        num_rows = min(num_rows, max_rows)
+        # --- Create canvas with dynamic height ---
+        canvas = Image.new("RGBA", (a4_width, flyer_height), (255, 255, 255, 255))
 
-        card_height = max([card.height for card in product_cards], default=100)
-        cards_section_height = num_rows * card_height + (num_rows + 1) * padding
-        text_section_height = 250
-        footer_height = 50
-
-        total_height = (
-            logo.height
-            + text_section_height
-            + cards_section_height
-            + footer_height
-            + 4 * padding
-        )
-        canvas_height = max(a4_height, total_height)
-
-        canvas = Image.new("RGBA", (a4_width, canvas_height), (255, 255, 255, 255))
-
-        # --- Paste logo ---
+        # --- Place logo in top section (centered) ---
         y_offset = padding
         x_logo = (a4_width - logo.width) // 2
         canvas.paste(logo, (x_logo, y_offset), logo)
-        y_offset += logo.height + padding
+        y_offset = logo_section_height + padding
 
-        # --- Reserve text section ---
-        y_offset += text_section_height + padding
-
-        # --- Place product cards ---
+        # --- Place product cards in cards section ---
         if num_cards > 0:
-            for i in range(0, num_cards, max_cards_per_row):
-                row_cards = product_cards[i:i + max_cards_per_row]
+            # Get actual card dimensions after resizing
+            if product_cards:
+                actual_card_height = max([card.height for card in product_cards])
+            else:
+                actual_card_height = 100
+            
+            card_index = 0
+            for row in range(num_rows):
+                # Calculate how many cards in this row
+                cards_in_this_row = min(cards_per_row, num_cards - card_index)
+                row_cards = product_cards[card_index:card_index + cards_in_this_row]
+                
+                # Center the row horizontally
                 row_width = sum(card.width for card in row_cards) + (len(row_cards) - 1) * padding
                 x_offset = (a4_width - row_width) // 2
+                
                 for card in row_cards:
                     canvas.paste(card, (x_offset, y_offset), card)
                     x_offset += card.width + padding
-                y_offset += card_height + padding
-
-        y_offset += footer_height
+                
+                y_offset += actual_card_height + padding
+                card_index += cards_in_this_row
 
         # --- Save draft flyer ---
         os.makedirs(f"{GENERATED_DIR}/{output_path}", exist_ok=True)
         draft_path = f"{GENERATED_DIR}/{output_path}/flyer_base_{flyer_index // max_cards_per_page + 1}.png"
         canvas.save(draft_path, format="PNG")
         print(f"✅ Draft flyer saved at: {draft_path}")
+        print(f"   Flyer dimensions: {a4_width}x{flyer_height}px")
+        print(f"   Cards: {num_cards}, Layout: {cards_per_row} per row, {num_rows} rows")
+        print(f"   Logo section: {logo_section_height}px, Cards section: {cards_section_height}px")
 
         # --- Send to AI for design polish ---
         buf = BytesIO()
@@ -128,7 +173,7 @@ def template_Design(Super_market_info: dict, product_list: list, shop_logo: str,
 
         # Prompt for AI enhancement
         prompt = f"""
-        Design a clean, modern A4 supermarket campaign leaflet.
+        Design a clean, modern supermarket campaign leaflet.
         Keep the layout exactly as in the base flyer:
         - Leaflet design style: {Super_market_info['theme_style']}
         - Theme should reflect colors, fonts, and overall look of the chosen style.
@@ -140,7 +185,7 @@ def template_Design(Super_market_info: dict, product_list: list, shop_logo: str,
         - Write: "{Super_market_info['Why_this_campaign']}" (italic, 16pt).
         - Write: "{Super_market_info['campaign_start_date']} to {Super_market_info['campaign_end_date']}" (14pt).
         3. Product cards stay exactly as provided; no changes.
-        4. Write: "{Super_market_info['supermarket_address']}" centered.
+        4. Write: "{Super_market_info['supermarket_address']}" footer at leaflet.
         """
 
         #Uncomment when using Qwen or OpenAI
@@ -153,7 +198,7 @@ def template_Design(Super_market_info: dict, product_list: list, shop_logo: str,
         print(f"🎨 Final flyer saved at: {final_path}")
         flyers.append(final_path)
         
-        return final_path if len(flyers) == 1 else flyers
+    return flyers[0] if len(flyers) == 1 else flyers
 
 if __name__ == "__main__":
     # Example product info
@@ -195,7 +240,7 @@ if __name__ == "__main__":
                 "old_price": 4.0,
                 "new_price": 3.2,
                 "discount": 20,
-                "image_url": "./app/temp/product_images/tomatoes.png",
+                "image_url": "./app/temp/product_images/tomato.png",
                 "currency": "$"
             },
             {
@@ -204,7 +249,7 @@ if __name__ == "__main__":
                 "old_price": 4.0,
                 "new_price": 3.2,
                 "discount": 20,
-                "image_url": "./app/temp/product_images/tomatoes.png",
+                "image_url": "./app/temp/product_images/tomato.png",
                 "currency": "$"
             },
             {
@@ -213,7 +258,7 @@ if __name__ == "__main__":
                 "old_price": 2.0,
                 "new_price": 1.5,
                 "discount": 25,
-                "image_url": "./app/temp/product_images/onions.png",
+                "image_url": "./app/temp/product_images/onion.png",
                 "currency": "$"
             }
         ],

@@ -12,3 +12,5 @@ requests
 protobuf
 sentencepiece
 bitsandbytes
+
+colorthief
