@@ -72,7 +72,6 @@ def _download_image(name: str, url: str, folder: str) -> str:
         local_path = os.path.join(project_root, url.lstrip("./").lstrip("/"))
         return _save_from_local(local_path, file_path)
 
-
 # Public APIs
 def download_image_by_logo(supermarket_name: str, supermarket_logo_url: str) -> str:
     return _download_image(supermarket_name, supermarket_logo_url, LOGO_DIR)
@@ -80,3 +79,4 @@ def download_image_by_logo(supermarket_name: str, supermarket_logo_url: str) -> 
 
 def download_image_by_product(product_name: str, product_url: str) -> str:
     return _download_image(product_name, product_url, PRODUCT_DIR)
+

@@ -137,7 +137,7 @@ def generate_flyer_pdf(request: dict, output_pdf="flyer_campaign.pdf"):
 
     # Upload PDF to Cloudinary
     uploaded_pdf = upload_pdf(output_pdf)
-    os.rmdir(output_path)
+    # os.rmdir(output_path)
 
     return {
         "images": uploaded_images,
