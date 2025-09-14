@@ -1,14 +1,9 @@
-
 import os
 import base64
 import requests
-import logging
 from fastapi import HTTPException
 from app.config import LOGO_DIR, PRODUCT_DIR
 
-logger = logging.getLogger(__name__)
-
-# Ensure dirs exist
 os.makedirs(LOGO_DIR, exist_ok=True)
 os.makedirs(PRODUCT_DIR, exist_ok=True)
 
@@ -26,10 +21,20 @@ def _save_base64_image(base64_str: str, file_path: str):
 
 def _save_from_url(url: str, file_path: str):
     try:
-        response = requests.get(url, timeout=10)
+        # Handle Google Drive share links
+        if "drive.google.com" in url:
+            # Convert to direct download link
+            if "uc?id=" not in url:
+                file_id = url.split("/d/")[1].split("/")[0]
+                url = f"https://drive.google.com/uc?id={file_id}&export=download"
+
+        # TODO: Add similar logic for OneDrive if needed
+
+        response = requests.get(url, timeout=15, stream=True)
         response.raise_for_status()
         with open(file_path, "wb") as f:
-            f.write(response.content)
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
         return file_path
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Failed to download image: {str(e)}")
@@ -58,7 +63,6 @@ def _download_image(name: str, url: str, folder: str) -> str:
     if os.path.exists(file_path):
         return file_path
 
-    # Decide source type
     if url.startswith("data:image/"):
         return _save_base64_image(url, file_path)
     elif url.startswith("http://") or url.startswith("https://"):
@@ -68,7 +72,6 @@ def _download_image(name: str, url: str, folder: str) -> str:
         local_path = os.path.join(project_root, url.lstrip("./").lstrip("/"))
         return _save_from_local(local_path, file_path)
 
-
 # Public APIs
 def download_image_by_logo(supermarket_name: str, supermarket_logo_url: str) -> str:
     return _download_image(supermarket_name, supermarket_logo_url, LOGO_DIR)
@@ -76,3 +79,4 @@ def download_image_by_logo(supermarket_name: str, supermarket_logo_url: str) -> 
 
 def download_image_by_product(product_name: str, product_url: str) -> str:
     return _download_image(product_name, product_url, PRODUCT_DIR)
+

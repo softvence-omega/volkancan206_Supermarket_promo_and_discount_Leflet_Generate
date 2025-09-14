@@ -1,10 +1,14 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load environment variables from .env
+load_dotenv(override=True)
 
-
+# Project root (three levels up if this file is in app/services/)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print("BASE_DIR set to:", BASE_DIR)
+
+# Temporary and output directories
 BASE_TEMP_DIR = os.path.join(BASE_DIR, "temp")
 LOGO_DIR = os.path.join(BASE_TEMP_DIR, "logo")
 PRODUCT_DIR = os.path.join(BASE_TEMP_DIR, "product_images")
@@ -15,9 +19,18 @@ GENERATED_DIR = os.path.join(BASE_TEMP_DIR, "generated_campaigns")
 os.makedirs(BASE_TEMP_DIR, exist_ok=True)
 os.makedirs(LOGO_DIR, exist_ok=True)
 os.makedirs(PRODUCT_DIR, exist_ok=True)
-os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(CARD_DIR, exist_ok=True)
+os.makedirs(GENERATED_DIR, exist_ok=True)
+
+# API keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Optional: debug print paths
+if os.getenv("DEBUG_PATHS", "1") == "1":
+    print("BASE_DIR:", BASE_DIR)
+    print("LOGO_DIR:", LOGO_DIR)
+    print("PRODUCT_DIR:", PRODUCT_DIR)
+    print("CARD_DIR:", CARD_DIR)
+    print("GENERATED_DIR:", GENERATED_DIR)

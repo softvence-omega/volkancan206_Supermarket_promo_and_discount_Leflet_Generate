@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+import requests
 from app.routes.Tamplate import router
 app = FastAPI()
 
@@ -9,6 +10,7 @@ app.include_router(router, prefix="/api", tags=["Campaign"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Tamplate Generate API!"}
+
 
 
 # Run locally:
