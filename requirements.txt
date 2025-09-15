@@ -2,16 +2,20 @@
 fastapi
 uvicorn
 python-multipart
+google-genai
+google-generativeai 
+pillow
 
 
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-transformers
+# transformers
 python-dotenv
 
 requests
-protobuf
-sentencepiece
-bitsandbytes
+# protobuf
+# sentencepiece
+# bitsandbytes
 
-colorthief
+# colorthief
 cloudinary
+

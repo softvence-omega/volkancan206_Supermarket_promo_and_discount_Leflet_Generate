@@ -6,6 +6,7 @@ from PIL import Image
 from google import genai
 from google.genai.errors import ClientError
 from app.services.upload import upload_image,upload_pdf
+import shutil
 
 from app.config import GEMINI_API_KEY,GENERATED_DIR
 
@@ -59,18 +60,16 @@ def build_prompt(supermarket_info: dict, products: list):
             for p in products
         ]
     )
-
     prompt = f"""
-    Design a supermarket **flyer / leaflet page** for '{supermarket_info['supermarket_name']}' and supermarket logo does not change.
+    Design a supermarket **flyer / leaflet page** for '{supermarket_info['supermarket_name']}'.
 
     🔹 Campaign: {supermarket_info['Why_this_campaign']}
     🔹 Theme/Style: {supermarket_info['theme_style']}
     🔹 Layout: {supermarket_info['template_instruction']}
-    🔹  Products (show multilingual text exactly as given): 
-    🔹 Products per page: {len(products)} (STRICTLY exactly {len(products)} products shown in the grid)
-    🔹 Address: {supermarket_info['supermarket_address']}
     🔹 Campaign dates: {supermarket_info['campaign_start_date']} → {supermarket_info['campaign_end_date']}
-    🔹 Contact info: Must include supermarket LOGO (provided image), name, tagline.
+    🔹 Products (show multilingual text exactly as given)
+    🔹 Address: {supermarket_info['supermarket_address']}
+    🔹 Products per page: {len(products)} (STRICTLY exactly {len(products)} products shown in the grid)
 
     🛒 Products on this page:
     {product_lines}
@@ -79,12 +78,12 @@ def build_prompt(supermarket_info: dict, products: list):
     - DO NOT add extra placeholders, empty grids, or additional products.
     - Show only {len(products)} product blocks in an organized leaflet style.
     - Text must be large, clear, and accurate.
-    Important:
-    - Always include the supermarket logo on every page (do not alter or redesign it).  
-    - Render all product names and text exactly as provided (could be Chinese, Japanese, Turkish, Hindi, Bangla, Korean, Arabic, etc.).  
-    - If the text is Right-to-Left (e.g. Arabic, Urdu, Hebrew), align it properly.  
-    - Maintain clean professional design with the requested theme.  
-
+    -- **Always include the supermarket logo on every page** (do not alter or redesign it in any way).
+    - Always include the supermarket logo (do not alter or redesign it).
+    - Render all product names exactly as provided.
+    - If text is Right-to-Left (Arabic, Urdu, Hebrew), align properly.
+    - Maintain a clean professional design with the requested theme.
+    - **IMPORTANT:** The supermarket address must always appear at the bottom/footer of the leaflet.
     - Flyer should look like a real **printed leaflet** with logo and campaign theme.
     """
     return prompt
@@ -137,7 +136,10 @@ def generate_flyer_pdf(request: dict, output_pdf="flyer_campaign.pdf"):
 
     # Upload PDF to Cloudinary
     uploaded_pdf = upload_pdf(output_pdf)
-    # os.rmdir(output_path)
+    # ✅ Use shutil to remove non-empty folder
+    shutil.rmtree(output_path, ignore_errors=True)
+    
+    
 
     return {
         "images": uploaded_images,

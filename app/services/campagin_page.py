@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def campaign_generate(request: dict):
+    
     try:
         # --- Validate and create directories ---
         for dir_path in [LOGO_DIR, PRODUCT_DIR, GENERATED_DIR]:
@@ -83,6 +84,20 @@ def campaign_generate(request: dict):
         )
 
         logger.info(f"Generated leaflet at: {leaflet_path}")
+        
+        #-----clean up log ----
+        os.remove(logo_path)
+        
+        # --- Clean up product images ---
+        for product in updated_products:
+            product_path = product.get("product_path")
+            if product_path and os.path.exists(product_path):
+                try:
+                    os.remove(product_path)
+                    logger.info(f"Deleted product image: {product_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete product image {product_path}: {e}")
+        
         return leaflet_path
 
     except Exception as e:
