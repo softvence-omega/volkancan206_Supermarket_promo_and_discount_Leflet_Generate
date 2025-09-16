@@ -15,9 +15,6 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def generate_flyer_page(prompt: str, images: list, output_prefix="flyer_page"):
-    """
-    Generate one flyer page with Gemini.
-    """
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash-image-preview",
@@ -25,24 +22,33 @@ def generate_flyer_page(prompt: str, images: list, output_prefix="flyer_page"):
         )
     except ClientError as e:
         if e.status_code == 429:
-            print(" Quota exceeded. Retrying in 60s...")
+            print("Quota exceeded. Retrying in 60s...")
             time.sleep(60)
             return generate_flyer_page(prompt, images, output_prefix)
         else:
             raise
 
     saved_files = []
+    candidate = response.candidates[0]
+
+    # Ensure candidate.content and parts exist
+    if not getattr(candidate, "content", None) or not getattr(candidate.content, "parts", None):
+        print("No image parts returned by Gemini.")
+        return saved_files  # empty list
+
     i = 0
-    for part in response.candidates[0].content.parts:
-        if part.text is not None:
-            print("Model text output:", part.text)
-        elif part.inline_data is not None:
+    for part in candidate.content.parts:
+        if getattr(part, "inline_data", None):
             image = Image.open(BytesIO(part.inline_data.data))
+            if image.mode in ("P", "RGBA"):
+                image = image.convert("RGB")
             filename = f"{output_prefix}_{i}.png"
             image.save(filename)
             saved_files.append(filename)
             print(f" Saved generated image: {filename}")
             i += 1
+        elif getattr(part, "text", None):
+            print("Text output:", part.text)
 
     return saved_files
 
@@ -50,7 +56,11 @@ def generate_flyer_page(prompt: str, images: list, output_prefix="flyer_page"):
 def build_prompt(supermarket_info: dict, products: list):
     """
     Build flyer prompt dynamically for Gemini (leaflet style).
+    Max 6 products per flyer page with details.
+    Each page must be unique but include the logo consistently.
     """
+    page_product = supermarket_info['products_per_page']
+
     product_lines = "\n".join(
         [
             f"- {p['name']} ({p.get('secondary_name','')}) "
@@ -60,92 +70,142 @@ def build_prompt(supermarket_info: dict, products: list):
             for p in products
         ]
     )
+    
     prompt = f"""
-    Design a supermarket **flyer / leaflet page** for '{supermarket_info['supermarket_name']}'.
+    Build flyer prompt with consistency controls for multi-page generation
+    """
+    product_lines = "\n".join([
+        f"- {p['name']} ({p.get('secondary_name','')}) "
+        f"| Old: {p['old_price']} {p['currency']} "
+        f"| New: {p['new_price']} {p['currency']} "
+        f"| Discount: {p['discount']}%"
+        for p in products
+    ])
+    
+    # Enhanced prompt with strict consistency rules
+    prompt = f"""
+    CRITICAL CONSISTENCY RULES - MUST FOLLOW EXACTLY:
+    🚫 DO NOT modify, redesign, or alter the supermarket logo in ANY way
+    🚫 DO NOT change background colors, gradients, or design elements
+    🚫 DO NOT substitute or modify product images
+    🚫 USE IDENTICAL design layout as previous pages
 
+    Design supermarket flyer page {page_product} for '{supermarket_info['supermarket_name']}'.
+    
+    VISUAL CONSISTENCY REQUIREMENTS:
+    ✅ Use EXACT SAME logo placement and size as reference
+    ✅ Maintain IDENTICAL background design and colors
+    ✅ Keep SAME header/footer layout structure
+    ✅ Use CONSISTENT typography and color scheme
+    ✅ Product images must remain unchanged from original
+    
     🔹 Campaign: {supermarket_info['Why_this_campaign']}
-    🔹 Theme/Style: {supermarket_info['theme_style']}
+    🔹 Theme/Style: {supermarket_info['theme_style']} (MAINTAIN EXACTLY)
     🔹 Layout: {supermarket_info['template_instruction']}
     🔹 Campaign dates: {supermarket_info['campaign_start_date']} → {supermarket_info['campaign_end_date']}
-    🔹 Products (show multilingual text exactly as given)
-    🔹 Address: {supermarket_info['supermarket_address']}
-    🔹 Products per page: {len(products)} (STRICTLY exactly {len(products)} products shown in the grid)
-
-    🛒 Products on this page:
+    🔹 Address: {supermarket_info['supermarket_address']} (MUST appear in footer)
+    
+    🛒 Products on page {page_product} (EXACTLY {len(products)} products):
     {product_lines}
-
-    📌 Rules:
-    - DO NOT add extra placeholders, empty grids, or additional products.
-    - Show only {len(products)} product blocks in an organized leaflet style.
-    - Text must be large, clear, and accurate.
-    -- **Always include the supermarket logo on every page** (do not alter or redesign it in any way).
-    - Always include the supermarket logo (do not alter or redesign it).
-    - Render all product names exactly as provided.
-    - If text is Right-to-Left (Arabic, Urdu, Hebrew), align properly.
-    - Maintain a clean professional design with the requested theme.
-    - **IMPORTANT:** The supermarket address must always appear at the bottom/footer of the leaflet.
-    - Flyer should look like a real **printed leaflet** with logo and campaign theme.
+    
+    📌 STRICT RULES:
+    - Show EXACTLY {len(products)} products, no more, no less
+    - DO NOT add placeholder products or empty grids
+    - Preserve original product images without modification
+    - Logo must be identical to previous pages
+    - Background design must remain consistent
+    - Text alignment for RTL languages (Arabic, Urdu, Hebrew)
+    - Professional printed leaflet appearance
+    
+    REFERENCE CONSISTENCY: If this is page 2+, maintain IDENTICAL visual style to page 1.
     """
     return prompt
 
 
-
 def generate_flyer_pdf(request: dict, output_pdf="flyer_campaign.pdf"):
     products = request["products"]
-    per_page = request.get("products_per_page", 3)  # default 3 per page if not set
+    per_page = request.get("products_per_page", 3)  # default 3 per page
     flyer_images = []
     total_products = len(products)
 
-    # Preload logo once
+    # Preload logo once and convert to RGB
     with Image.open(request["logo_path"]) as img:
         logo_img = img.copy()
-        
-    output_path= os.path.join(GENERATED_DIR, request['supermarket_name'])
+        if logo_img.mode in ("P", "RGBA"):
+            logo_img = logo_img.convert("RGB")
+
+    # Prepare output folder
+    output_path = os.path.join(GENERATED_DIR, request['supermarket_name'])
     os.makedirs(output_path, exist_ok=True)
     print("output path--------", output_path)
-    
+
+    background_image = None  # Keep background fixed from first page
+
     for i in range(0, total_products, per_page):
         chunk = products[i:i + per_page]
         prompt = build_prompt(request, chunk) + f"\n(Total products in campaign: {total_products})"
 
-        # Start with logo first
-        imgs = [logo_img.copy()]
+        # Start building image input list (logo always first)
+        img_inputs = [logo_img.copy()]
 
-        # Add product images
+        # Add product images (convert each to RGB)
         for p in chunk:
             with Image.open(p["product_path"]) as img:
-                imgs.append(img.copy())
+                img_copy = img.copy()
+                if img_copy.mode in ("P", "RGBA"):
+                    img_copy = img_copy.convert("RGB")
+                img_inputs.append(img_copy)
 
-        img_path= os.path.join(output_path, f"flyer_page_{i//per_page}" )
+        # Use the same background for all pages
+        if background_image:
+            img_inputs.insert(1, background_image.copy())
+            print("Using fixed background for this page")
+
+        img_path = os.path.join(output_path, f"flyer_page_{i//per_page}")
         print("generated image file path-----------------", img_path)
-        
-        # Generate flyer page (logo is guaranteed to be the first image)
-        page_files = generate_flyer_page(prompt, imgs, output_prefix=img_path)
+
+        # Generate flyer page
+        page_files = generate_flyer_page(prompt, img_inputs, output_prefix=img_path)
+
+        # Convert Gemini-generated images to RGB just in case
+        for idx, f in enumerate(page_files):
+            with Image.open(f) as gen_img:
+                if gen_img.mode in ("P", "RGBA"):
+                    gen_img = gen_img.convert("RGB")
+                    gen_img.save(f)  # overwrite file
+            # Save only the first background, and reuse later
+            if i == 0 and idx == 0 and background_image is None:
+                background_image = Image.open(f).copy().convert("RGB")
+                print("Background fixed from first page")
+
         flyer_images.extend(page_files)
 
     # Merge all pages into a single PDF
     if flyer_images:
-        pil_imgs = [Image.open(f).convert("RGB") for f in flyer_images]
+        pil_imgs = []
+        for f in flyer_images:
+            with Image.open(f) as img:
+                if img.mode in ("P", "RGBA"):
+                    img = img.convert("RGB")
+                pil_imgs.append(img.copy())
+
         pil_imgs[0].save(output_pdf, save_all=True, append_images=pil_imgs[1:])
         print(f"Final flyer PDF saved: {output_pdf}")
     else:
         print("No flyer images generated.")
-    
-     # Upload images to Cloudinary
+
+    # Upload images to Cloudinary
     uploaded_images = [upload_image(f) for f in flyer_images]
 
     # Upload PDF to Cloudinary
     uploaded_pdf = upload_pdf(output_pdf)
-    # ✅ Use shutil to remove non-empty folder
+
     shutil.rmtree(output_path, ignore_errors=True)
-    
-    
 
     return {
         "images": uploaded_images,
         "flyer_pdf": uploaded_pdf
     }
-
 
 
 
