@@ -20,8 +20,8 @@ class CampaignRequest(BaseModel):
     supermarket_logo_url: str
 
     products: List[Product]
-    products_per_page: int = 9             # sensible default
+    products_per_page: int = 6            # sensible default
     
-    template_instruction: str              # e.g. "Discount Flyer", "Hero Banner"
+    template_instruction: str =None            # e.g. "Discount Flyer", "Hero Banner"
     theme_style: Optional[str] = "modern"  # "festive", "minimal", "bold"
 

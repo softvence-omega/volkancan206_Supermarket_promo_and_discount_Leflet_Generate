@@ -59,8 +59,6 @@ def build_prompt(supermarket_info: dict, products: list):
     Max 6 products per flyer page with details.
     Each page must be unique but include the logo consistently.
     """
-    page_product = supermarket_info['products_per_page']
-
     product_lines = "\n".join(
         [
             f"- {p['name']} ({p.get('secondary_name','')}) "
@@ -82,44 +80,25 @@ def build_prompt(supermarket_info: dict, products: list):
         for p in products
     ])
     
-    # Enhanced prompt with strict consistency rules
     prompt = f"""
-    CRITICAL CONSISTENCY RULES - MUST FOLLOW EXACTLY:
-    🚫 DO NOT modify, redesign, or alter the supermarket logo in ANY way
-    🚫 DO NOT change background colors, gradients, or design elements
-    🚫 DO NOT substitute or modify product images
-    🚫 USE IDENTICAL design layout as previous pages
+    You are an expert supermarket flyer and leaflet designer.  
+    Your task is to generate **visually attractive supermarket flyer pages** optimized for promotions, discounts, and seasonal campaigns. 
+    - Auto Generating  background attractive for supermarket leaflet style.
+    - **First flyer image defines the background** for all following pages.
+    - No extra words; text must be clear and multilingual.
+    Now design **flyer page** for **'{supermarket_info['supermarket_name']}'**:
 
-    Design supermarket flyer page {page_product} for '{supermarket_info['supermarket_name']}'.
-    
-    VISUAL CONSISTENCY REQUIREMENTS:
-    ✅ Use EXACT SAME logo placement and size as reference
-    ✅ Maintain IDENTICAL background design and colors
-    ✅ Keep SAME header/footer layout structure
-    ✅ Use CONSISTENT typography and color scheme
-    ✅ Product images must remain unchanged from original
-    
-    🔹 Campaign: {supermarket_info['Why_this_campaign']}
-    🔹 Theme/Style: {supermarket_info['theme_style']} (MAINTAIN EXACTLY)
-    🔹 Layout: {supermarket_info['template_instruction']}
-    🔹 Campaign dates: {supermarket_info['campaign_start_date']} → {supermarket_info['campaign_end_date']}
-    🔹 Address: {supermarket_info['supermarket_address']} (MUST appear in footer)
-    
-    🛒 Products on page {page_product} (EXACTLY {len(products)} products):
+    - Campaign: {supermarket_info['Why_this_campaign']}
+    - Theme/Style: {supermarket_info['theme_style']} (STRICTLY MAINTAIN SAME STYLE across all pages)
+    - Layout: {supermarket_info['template_instruction']} (DO NOT improvise outside these rules)
+    - Campaign dates: {supermarket_info['campaign_start_date']} → {supermarket_info['campaign_end_date']}
+    - Address: {supermarket_info['supermarket_address']} (MUST appear in footer, every page)
+    Products to include exact as provide no more no less):  
     {product_lines}
-    
-    📌 STRICT RULES:
-    - Show EXACTLY {len(products)} products, no more, no less
-    - DO NOT add placeholder products or empty grids
-    - Preserve original product images without modification
-    - Logo must be identical to previous pages
-    - Background design must remain consistent
-    - Text alignment for RTL languages (Arabic, Urdu, Hebrew)
-    - Professional printed leaflet appearance
-    
-    REFERENCE CONSISTENCY: If this is page 2+, maintain IDENTICAL visual style to page 1.
+
     """
     return prompt
+
 
 
 def generate_flyer_pdf(request: dict, output_pdf="flyer_campaign.pdf"):
@@ -210,47 +189,110 @@ def generate_flyer_pdf(request: dict, output_pdf="flyer_campaign.pdf"):
 
 
 
-if __name__ == "__main__":
-    example_request = {
-        "supermarket_name": "Interfood",
-        "Why_this_campaign": "Massive Eid Discounts!",
-        "supermarket_address": "CAN Nürnberg,Ingolstädter Str. 53,90461 Nürnberg,Telefon 09 11/99 44 83 70,Mo. - Sa. 08.00 - 20.00 Uhr",
-        "campaign_start_date": "2025-09-10",
-        "campaign_end_date": "2025-09-25",
-        "supermarket_logo_url": "temp/logo/supermart.png",  #will be used
-        "products": [
-            {
-                "name": "cocacola",
-                "secondary_name": "تفاح",
-                "old_price": 5.0,
-                "new_price": 3.5,
-                "discount": 30,
-                "image_url": "https://drive.google.com/file/d/1h_V076e89aEkT-qN-GzMKnoq_jR7ymPR/view?usp=drive_link",
-                "currency": "$"
-            },
-            {
-                "name": "mango",
-                "secondary_name": "أرز",
-                "old_price": 20.0,
-                "new_price": 15.0,
-                "discount": 25,
-                "image_url": "https://drive.google.com/file/d/1jxkmc6RXSpbO3TYup0tiH7QK5qe8XuZC/view?usp=drive_link",
-                "currency": "$"
-            },
-            {
-                "name": "souce",
-                "secondary_name": "لحم",
-                "old_price": 200,
-                "new_price": 150,
-                "discount": 25,
-                "image_url": "https://drive.google.com/file/d/1hyc90sjFnZ7As7QfdeZgtdNEp91VhwtU/view?usp=drive_link",
-                "currency": "Tk"
-            }
+# if __name__ == "__main__":
+#     example_request = {
+#         "supermarket_name": "Interfood",
+#         "Why_this_campaign": "Massive Eid Discounts!",
+#         "supermarket_address": "CAN Nürnberg,Ingolstädter Str. 53,90461 Nürnberg,Telefon 09 11/99 44 83 70,Mo. - Sa. 08.00 - 20.00 Uhr",
+#         "campaign_start_date": "2025-09-10",
+#         "campaign_end_date": "2025-09-25",
+#         "supermarket_logo_url": "temp/logo/supermart.png",  #will be used
+#         "products":   "products": [
+#     {
+#       "name": "cocacola",
+#       "secondary_name": "تفاح",
+#       "old_price": 5.0,
+#       "new_price": 3.5,
+#       "discount": 30,
+#       "image_url": "https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-2179849363.jpg?c=16x9&q=h_653,w_1160,c_fill/f_avif",
+#       "currency": "$"
+#     },
+#     {
+#       "name": "mango",
+#       "secondary_name": "أرز",
+#       "old_price": 20.0,
+#       "new_price": 15.0,
+#       "discount": 25,
+#       "image_url": "https://foodal.com/wp-content/uploads/2015/06/Marvelous-Mangos-King-of-Fruits.jpg",
+#       "currency": "$"
+#     },
+#     {
+#       "name": "souce",
+#       "secondary_name": "لحم",
+#       "old_price": 200.0,
+#       "new_price": 150.0,
+#       "discount": 25,
+#       "image_url": "https://5.imimg.com/data5/SELLER/Default/2024/3/398297040/RT/DM/KK/44772625/red-chilli-souce-650-ml-1000x1000.jpg",
+#       "currency": "Tk"
+#     },
+#     {
+#       "name": "pepsi",
+#       "secondary_name": "عصير",
+#       "old_price": 6.0,
+#       "new_price": 4.0,
+#       "discount": 33,
+#       "image_url": "https://media.istockphoto.com/id/487787092/photo/can-and-glass-of-pepsi-cola.jpg?s=612x612&w=0&k=20&c=4Lqp4y8xCIF4IrV2a6DGkNhreCUwEAVfv3mEgb9aUJY=",
+#       "currency": "$"
+#     },
+#     {
+#       "name": "apple",
+#       "secondary_name": "تفاح أحمر",
+#       "old_price": 12.0,
+#       "new_price": 9.0,
+#       "discount": 25,
+#       "image_url": "https://hips.hearstapps.com/hmg-prod/images/apples-at-farmers-market-royalty-free-image-1627321463.jpg?crop=0.796xw:1.00xh;0.103xw,0&resize=980:*",
+#       "currency": "$"
+#     },
+#     {
+#       "name": "rice",
+#       "secondary_name": "أرز بسمتي",
+#       "old_price": 50.0,
+#       "new_price": 40.0,
+#       "discount": 20,
+#       "image_url": "https://c.ndtvimg.com/2023-08/brlp7gk_uncooked-rice-or-rice-grains_625x300_18_August_23.jpg?im=FaceCrop,algorithm=dnn,width=773,height=435",
+#       "currency": "Tk"
+#     },
+#     {
+#       "name": "chicken",
+#       "secondary_name": "دجاج",
+#       "old_price": 150.0,
+#       "new_price": 120.0,
+#       "discount": 20,
+#       "image_url": "https://assets.farmison.com/images/recipe-detail-1380/76340-yorkshire-free-range-loose-birds-chicken3c3e9dd7-8edd-41fa-b35d-73f3cb951b8asquare900x900.jpg",
+#       "currency": "Tk"
+#     },
+#     {
+#       "name": "orange juice",
+#       "secondary_name": "برتقال",
+#       "old_price": 15.0,
+#       "new_price": 10.0,
+#       "discount": 33,
+#       "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Orangejuice.jpg/800px-Orangejuice.jpg",
+#       "currency": "$"
+#     },
+#     {
+#       "name": "milk",
+#       "secondary_name": "حليب",
+#       "old_price": 25.0,
+#       "new_price": 20.0,
+#       "discount": 20,
+#       "image_url": "https://mydiagnostics.in/cdn/shop/articles/img-1748326586409_1200x.jpg?v=1748327918",
+#       "currency": "Tk"
+#     },
+#     {
+#       "name": "bread",
+#       "secondary_name": "خبز",
+#       "old_price": 8.0,
+#       "new_price": 6.0,
+#       "discount": 25,
+#       "image_url": "https://www.bhg.com/thmb/ix1jf9aUXcxyFtekIBlVCAIBW4w=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/BHG-milk-bread-4CdeIL1uKGyB5ryU8J_EED-aaa76729c86a413ca7500029edba79f0.jpg",
+#       "currency": "$"
+#     }
 
-        ],
-        "products_per_page": 2,
-        "template_instruction": "Clean modern layout, green eco theme",
-        "theme_style": "organic and minimal",
-    }
+#         ],
+#         "products_per_page": 2,
+#         "template_instruction": "Clean modern layout, green eco theme",
+#         "theme_style": "organic and minimal",
+#     }
 
-    generate_flyer_pdf(example_request)
+#     generate_flyer_pdf(example_request)
