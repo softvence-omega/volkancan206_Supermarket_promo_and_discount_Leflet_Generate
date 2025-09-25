@@ -33,6 +33,7 @@ pip-delete-this-directory.txt
 *.env
 config/*.env
 HF_TOKEN
+*pdf
 
 # ------------------------------
 # OS files

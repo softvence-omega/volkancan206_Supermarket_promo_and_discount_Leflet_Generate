@@ -3,6 +3,7 @@ import math
 import os
 from PIL import Image
 import logging
+import uuid
 
 from app.schemas.Campaign_Info import FlyerRequest, FlyerResponse
 from app.services.flyer_service import generate_flyer, download_image, format_products_info
@@ -11,56 +12,13 @@ from app.services.upload import upload_image
 
 logger = logging.getLogger(__name__)
 
-# # Prompt templates
-# FIRST_PROMPT_TEMPLATE = """
-# Create a Bangladeshi supermarket flyer for {supermarket_name}.
-# - Theme: {theme_style}, vibrant green-orange festive style
-# - Campaign: {why_this_campaign}
-# - Grid: 2x2 or 3x2 with products
-# - Show English names, old price crossed, new price, discount badge
-# - Add supermarket name, logo, campaign tagline, address, and dates
-# - Address: {supermarket_address}
-# - Phone number: {phone_number}
-# - Email: {email}
-# - Campaign Period: {campaign_start_date} to {campaign_end_date}
-
-# Products to include:
-# {products_info}
-
-# NB: Text must be correct and clear.
-# Generate a flyer and don't change any information, logo, or product photos.
-# """
-
-# SECOND_PROMPT_TEMPLATE = """
-# Create a Bangladeshi supermarket flyer for {supermarket_name}.
-# - Theme: {theme_style}, vibrant green-orange festive style
-# - Campaign: {why_this_campaign}
-# - Grid: 2x2 or 3x2 with products
-# - Show English names, old price crossed, new price, discount badge
-# - Add supermarket name, campaign tagline, address, and dates
-# - Address: {supermarket_address}
-# - Phone number: {phone_number}
-# - Email: {email}
-# - Campaign Period: {campaign_start_date} to {campaign_end_date}
-
-# Products to include:
-# {products_info}
-
-# NB: Text must be correct and clear.
-
-# Generate a flyer with new product photos but keep the flyer design same as the reference.
-# Don't change any information or product photos.
-
-# Provided a reference flyer. Generate a flyer with new product photos but keep the flyer design same.
-# """
-
 # Prompt templates
 FIRST_PROMPT_TEMPLATE = """
 Create a supermarket flyer for {supermarket_name}.
 - Theme: {theme_style}
 - Campaign: {why_this_campaign}
 - Grid Layout: {grid_layout} layout with {product_count} products (arrange products to fill the space efficiently and attractively)
-- Show English names, old price crossed, new price, discount badge
+- Show product names, old price crossed, new price, discount badge
 - Address: {supermarket_address}
 - Phone number: {phone_number}
 - Email: {email}
@@ -85,7 +43,7 @@ Create a Bangladeshi supermarket flyer for {supermarket_name}.
 - Theme: {theme_style}
 - Campaign: {why_this_campaign}
 - Grid Layout: {grid_layout} layout with {product_count} products (arrange products to fill the space efficiently and attractively)
-- Show English names, old price crossed, new price, discount badge
+- Show product names, old price crossed, new price, discount badge
 - Address: {supermarket_address}
 - Phone number: {phone_number}
 - Email: {email}
@@ -212,26 +170,59 @@ async def generate_flyers(request: FlyerRequest):
             generated_flyers.extend(flyer_images)
         
         ret_urls = []
+        local_img_paths = []
         for img_url in generated_flyers:
             img_path = img_url.replace("http://localhost:8000/outputs/", "")
             logger.info(f"Processing image path: {img_path}")
             img_path = os.path.join(OUTPUTS_DIR, img_path)
+            local_img_paths.append(img_path)
             logger.info(f"Final image path: {img_path}")
 
-            img_url = upload_image(img_path)
-            ret_urls.append(img_url)
-            logger.info(f"Uploaded image URL: {img_url}")
+            #img_url = upload_image(img_path)
+            #ret_urls.append(img_url)
+            #logger.info(f"Uploaded image URL: {img_url}")
 
-        generated_flyers = ret_urls
+        #generated_flyers = ret_urls
+
+        output_pdf = f"{OUTPUTS_DIR}/{uuid.uuid4().hex}_flyer.pdf"
+        pdf_url = generate_pdf(local_img_paths, output_pdf)
+
 
 
         return FlyerResponse(
             success=True,
             message=f"Successfully generated {len(generated_flyers)} flyer(s)",
             flyers_generated=len(generated_flyers),
-            flyer_urls=generated_flyers
+            flyer_urls=[pdf_url]
         )
         
     except Exception as e:
         logger.error(f"Error in /generate-flyers: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+from typing import List
+from app.services.upload import upload_pdf
+
+def generate_pdf(flyer_images: List[str], output_pdf: str = "outputs/final_flyer.pdf"):
+    # Merge all pages into a single PDF
+    try:
+        if flyer_images:
+            pil_imgs = []
+            for f in flyer_images:
+                with Image.open(f) as img:
+                    if img.mode in ("P", "RGBA"):
+                        img = img.convert("RGB")
+                    pil_imgs.append(img.copy())
+
+            pil_imgs[0].save(output_pdf, save_all=True, append_images=pil_imgs[1:])
+            print(f"Final flyer PDF saved: {output_pdf}")
+        else:
+            print("No flyer images generated.")
+
+        # Upload PDF to Cloudinary
+        uploaded_pdf = upload_pdf(output_pdf)
+
+        return uploaded_pdf
+    except Exception as e:
+        logger.error(f"Error generating PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error generating PDF")
