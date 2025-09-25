@@ -27,10 +27,3 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Optional: debug print paths
-if os.getenv("DEBUG_PATHS", "1") == "1":
-    print("BASE_DIR:", BASE_DIR)
-    print("LOGO_DIR:", LOGO_DIR)
-    print("PRODUCT_DIR:", PRODUCT_DIR)
-    print("CARD_DIR:", CARD_DIR)
-    print("GENERATED_DIR:", GENERATED_DIR)
