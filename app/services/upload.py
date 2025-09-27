@@ -21,7 +21,6 @@ def upload_image(file_path: str) -> str:
         resource_type="image",      # image files
         type="upload"               # public by default
     )
-    print("Image upload result:", result)
     return result["secure_url"]
 
 # Upload PDF (or any raw file)
@@ -32,7 +31,6 @@ def upload_pdf(file_path: str) -> str:
         resource_type="raw",        # for pdf/docx/zip etc.
         type="upload"               # public delivery (no expiry)
     )
-    print("PDF upload result:", result)
     return result["secure_url"]
 
 # Example usage

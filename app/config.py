@@ -6,7 +6,6 @@ load_dotenv(override=True)
 
 # Project root (three levels up if this file is in app/services/)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print("BASE_DIR set to:", BASE_DIR)
 
 # Temporary and output directories
 BASE_TEMP_DIR = os.path.join(BASE_DIR, "temp")

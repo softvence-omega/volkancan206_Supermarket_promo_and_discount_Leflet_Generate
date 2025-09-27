@@ -1,4 +1,10 @@
 outputs/
+Dockerfile
+docker-compose.yml
+.dockerignore
+.github/*
+
+
 # ------------------------------
 # Python
 # ------------------------------

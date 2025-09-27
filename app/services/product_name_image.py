@@ -48,7 +48,6 @@ def generate_product_image(product_name: str, save_path: str = None) -> str:
     with open(save_path, "wb") as f:
         f.write(image_bytes)
 
-    print("Generated product image path ------", save_path)
     return save_path
 
 # Example usage

@@ -106,4 +106,5 @@ class FlyerResponse(BaseModel):
     success: bool
     message: str
     flyers_generated: int
-    flyer_urls: List[str]
+    pdf_url: Optional[HttpUrl] = None
+    img_urls: Optional[List[HttpUrl]] = None

@@ -12,60 +12,110 @@ from app.services.upload import upload_image
 
 logger = logging.getLogger(__name__)
 
-# Prompt templates
 FIRST_PROMPT_TEMPLATE = """
-Create a supermarket flyer for {supermarket_name}.
+Create a professional supermarket flyer for {supermarket_name}.
 - Theme: {theme_style}
 - Campaign: {why_this_campaign}
-- Grid Layout: {grid_layout} layout with {product_count} products (arrange products to fill the space efficiently and attractively)
-- Show product names, old price crossed, new price, discount badge
+- Grid Layout: {grid_layout} layout with {product_count} products
 - Address: {supermarket_address}
 - Phone number: {phone_number}
 - Email: {email}
 - Campaign Period: {campaign_start_date} to {campaign_end_date}
 
-Products to include:
+CRITICAL: USE ONLY THE EXACT PRICES PROVIDED BELOW - DO NOT MODIFY ANY NUMBERS:
+
 {products_info}
 
-IMPORTANT: 
-- Adjust product image sizes and layout dynamically based on the number of products
-- If fewer products, make them larger and more prominent
-- If more products, arrange them efficiently in the grid
-- Maintain visual balance and attractiveness regardless of product count
-- Text must be correct and clear
-- Never duplicate products (same product should not appear more than once in the flyer)
+ABSOLUTE REQUIREMENTS FOR PRICE ACCURACY:
+1. NEVER change, round, or modify the provided price numbers
+2. NEVER create your own price calculations
+3. NEVER use different prices than what's specified above
+4. ALWAYS double-check that displayed prices match the provided data exactly
+5. Each product MUST show the exact old price and new price as listed
 
-Generate a flyer and don't change any information, logo, or product photos.
+DESIGN REQUIREMENTS:
+1. PRODUCT CARD BACKGROUNDS:
+   - NO solid white backgrounds for product cards
+   - Use semi-transparent themed backgrounds that match the overall flyer design
+   - Product cards should have subtle gradient backgrounds or textured backgrounds
+   - Cards should blend harmoniously with the main flyer background
+
+2. LOGO INTEGRATION REQUIREMENTS:
+   - DO NOT place the logo on a solid white background or any solid colored background
+   - Integrate the logo naturally into the themed flyer background
+   - Logo should appear to "float" on the main flyer background with transparency
+   - Use subtle shadow or glow effects around the logo if needed for visibility
+   - Logo background should match and blend with the overall flyer theme
+   - Ensure logo remains readable while maintaining theme integration
+
+3. PRICE DISPLAY FORMAT:
+   - Product Name (with secondary description)
+   - OLD PRICE: [exact amount] [currency] (with strikethrough line)
+   - NEW PRICE: [exact amount] [currency] (bold, larger font)
+   - Discount badge: [X]% OFF (red circular badge)
+
+4. VISUAL INTEGRATION:
+   - Professional appearance with themed, integrated backgrounds
+   - No stark white product cards
+   - Maintain readability with proper contrast
+
+5. IMPORTANT: 
+   - DO NOT MODIFY ANY OF THE ABOVE NUMBERS OR PRICES IN ANY WAY. USE THEM EXACTLY AS PROVIDED.
+   - DO NOT DUPLICATE THE SAME PRODUCT TWICE ON THE SAME FLYER.
+
+WARNING: Any deviation from the provided price numbers will result in incorrect flyer information. Use ONLY the exact prices specified above.
 """
 
 SECOND_PROMPT_TEMPLATE = """
-Create a Bangladeshi supermarket flyer for {supermarket_name}.
+Create a professional supermarket flyer for {supermarket_name}.
 - Theme: {theme_style}
 - Campaign: {why_this_campaign}
-- Grid Layout: {grid_layout} layout with {product_count} products (arrange products to fill the space efficiently and attractively)
-- Show product names, old price crossed, new price, discount badge
+- Grid Layout: {grid_layout} layout with {product_count} products
 - Address: {supermarket_address}
 - Phone number: {phone_number}
 - Email: {email}
 - Campaign Period: {campaign_start_date} to {campaign_end_date}
 
-Products to include:
+EXACT PRODUCT PRICING TO DISPLAY:
 {products_info}
 
-IMPORTANT:
-- Use the reference flyer's design style and color scheme
-- Adjust product image sizes and layout dynamically based on the number of products
-- If fewer products than reference, make them larger and more prominent
-- If more products, arrange them efficiently while maintaining the design aesthetic
-- Keep the same overall design theme as reference but adapt the product grid as needed
-- Text must be correct and clear
-- Never duplicate products (same product should not appear more than once in the flyer)
+MANDATORY DESIGN & FORMATTING RULES:
 
-Generate a flyer with new product photos but keep the flyer design style same as the reference.
-Don't change any information or product photos.
+1. PRODUCT CARD BACKGROUNDS (CRITICAL):
+   - ABSOLUTELY NO solid white backgrounds for product cards
+   - Use the same design approach as the reference flyer
+   - Product cards must have themed, integrated backgrounds
+   - Examples: translucent overlays, themed textures, gradient backgrounds
+   - Backgrounds should complement and match the overall flyer theme
+   - Maintain visual continuity with the reference design style
 
-Provided a reference flyer. Generate a flyer with new product photos but adapt the layout for {product_count} products while maintaining the design style.
+2. PRICE FORMATTING:
+   - Product Name (with secondary description)
+   - OLD PRICE: [amount] [currency] (with strikethrough line)
+   - NEW PRICE: [amount] [currency] (bold, larger font)
+   - Discount badge: [X]% OFF (red circular badge)
+
+3. REFERENCE DESIGN INTEGRATION:
+   - Follow the reference flyer's background treatment for product areas
+   - Maintain the same visual aesthetic and color harmony
+   - Use similar background textures and transparency effects
+   - Keep consistent typography and design elements from reference
+   - Preserve the professional, integrated look of the reference
+
+4. VISUAL COHESION:
+   - Seamless integration between main background and product areas
+   - Themed borders and decorative elements matching the reference
+   - Sophisticated color blending throughout the design
+   - Professional appearance with proper visual flow
+
+5. IMPORTANT: 
+   - DO NOT MODIFY ANY OF THE ABOVE NUMBERS OR PRICES IN ANY WAY. USE THEM EXACTLY AS PROVIDED.
+   - FOLLOW THE REFERENCE DESIGN STYLE CLOSELY FOR BACKGROUNDS AND INTEGRATION ASPECTS.
+   - DO NOT DUPLICATE THE SAME PRODUCT TWICE ON THE SAME FLYER.
+
+Generate a flyer matching the reference design style with integrated themed backgrounds - NO white product card backgrounds.
 """
+
 
 router = APIRouter(
     prefix="/flyer",
@@ -178,14 +228,23 @@ async def generate_flyers(request: FlyerRequest):
             local_img_paths.append(img_path)
             logger.info(f"Final image path: {img_path}")
 
-            #img_url = upload_image(img_path)
-            #ret_urls.append(img_url)
-            #logger.info(f"Uploaded image URL: {img_url}")
-
-        #generated_flyers = ret_urls
+            img_url = upload_image(img_path)
+            ret_urls.append(img_url)
+            logger.info(f"Uploaded image URL: {img_url}")
 
         output_pdf = f"{OUTPUTS_DIR}/{uuid.uuid4().hex}_flyer.pdf"
         pdf_url = generate_pdf(local_img_paths, output_pdf)
+        try:
+            if os.path.exists(output_pdf):
+                os.remove(output_pdf)
+                logger.info(f"Deleted local PDF: {output_pdf}")
+            
+            for img_path in local_img_paths:
+                if os.path.exists(img_path):
+                    os.remove(img_path)
+                    logger.info(f"Deleted local image: {img_path}")
+        except Exception as e:
+            logger.error(f"Error deleting local files: {str(e)}")
 
 
 
@@ -193,7 +252,9 @@ async def generate_flyers(request: FlyerRequest):
             success=True,
             message=f"Successfully generated {len(generated_flyers)} flyer(s)",
             flyers_generated=len(generated_flyers),
-            flyer_urls=[pdf_url]
+            pdf_url=pdf_url,
+            img_urls=ret_urls
+
         )
         
     except Exception as e:

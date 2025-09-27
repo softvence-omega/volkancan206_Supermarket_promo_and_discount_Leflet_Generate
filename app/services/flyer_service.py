@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 import uuid
 from datetime import datetime
+import logging
 
 from app.schemas.Campaign_Info import  Product
 
@@ -20,7 +21,7 @@ if not os.path.exists(OUTPUTS_DIR):
 
 # Initialize Gemini client
 client = genai.Client()
-
+logger = logging.getLogger(__name__)
 
 def download_image(url: str) -> Image.Image:
     """Download image from URL and return PIL Image object"""
@@ -33,6 +34,9 @@ def download_image(url: str) -> Image.Image:
             'Pragma': 'no-cache'
         }
         response = requests.get(str(url), timeout=30, headers=headers, allow_redirects=True)
+        if response.status_code != 200:
+            logger.error(f"Failed to download image from {url}: {response.status_code}")
+
         response.raise_for_status()
         
         # Try to open the image directly - PIL will validate if it's a real image
