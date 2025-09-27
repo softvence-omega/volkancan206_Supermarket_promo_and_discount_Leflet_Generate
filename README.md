@@ -57,10 +57,12 @@ An AI-powered promotional flyer generator for supermarkets and grocery stores. T
 4. **Environment Configuration**
    Create a `.env` file in the root directory:
    ```env
-   GOOGLE_API_KEY=your_google_ai_api_key_here
-   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-   CLOUDINARY_API_KEY=your_cloudinary_api_key
-   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+    HF_TOKEN=your_huggingface_token
+    GEMINI_API_KEY=your_gemini_api_key
+    CLOUD_NAME=your_cloudinary_cloud_name
+    API_KEY=your_cloudinary_api_key
+    API_SECRET=your_cloudinary_api_secret
+
    ```
 
 5. **Run the application**
@@ -159,12 +161,13 @@ Send a POST request to `/api/generate-flyer` with the following JSON structure:
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GOOGLE_API_KEY` | Google AI API key for Gemini model | Yes |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name for image hosting | Optional |
-| `CLOUDINARY_API_KEY` | Cloudinary API key | Optional |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret | Optional |
+| Variable         | Description                             | Required |
+| ---------------- | --------------------------------------- | -------- |
+| `GEMINI_API_KEY` | Google AI Gemini API key                | Yes      |
+| `CLOUD_NAME`     | Cloudinary cloud name for image hosting | Optional |
+| `API_KEY`        | Cloudinary API key                      | Optional |
+| `API_SECRET`     | Cloudinary API secret                   | Optional |
+
 
 ### Application Settings
 

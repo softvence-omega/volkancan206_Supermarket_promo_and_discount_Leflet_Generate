@@ -23,5 +23,5 @@ os.makedirs(GENERATED_DIR, exist_ok=True)
 
 # API keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-HF_TOKEN = os.getenv("HF_TOKEN")
+
 
